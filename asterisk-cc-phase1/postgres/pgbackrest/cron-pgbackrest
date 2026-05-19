@@ -1,0 +1,8 @@
+# /etc/cron.d/pgbackrest
+SHELL=/bin/bash
+# Full backup every Sunday 02:00
+0 2 * * 0 postgres pgbackrest --stanza=cc --type=full backup
+# Differential daily 02:00 Mon-Sat
+0 2 * * 1-6 postgres pgbackrest --stanza=cc --type=diff backup
+# Expire old per retention rules
+30 3 * * * postgres pgbackrest --stanza=cc expire

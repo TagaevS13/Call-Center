@@ -1,0 +1,99 @@
+version: "3.9"
+
+x-asterisk-base: &asterisk-base
+  image: andrius/asterisk:20-current
+  restart: unless-stopped
+  cap_add: [NET_ADMIN, NET_BROADCAST, SYS_NICE]
+  environment:
+    PG_HOST: ${PG_HOST}
+    PG_PORT: ${PG_PORT}
+    PG_DB: ${PG_DB}
+    PG_USER: ${PG_USER}
+    PG_PASSWORD: ${PG_PASSWORD}
+  volumes:
+    - ./asterisk/etc:/etc/asterisk:ro
+    - ./asterisk/scripts:/opt/cc/scripts:ro
+    - asterisk-spool:/var/spool/asterisk
+    - asterisk-logs:/var/log/asterisk
+    - recordings:/var/spool/asterisk/recordings
+  depends_on: [postgres]
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PG_DB}
+      POSTGRES_USER: ${PG_SUPER_USER}
+      POSTGRES_PASSWORD: ${PG_SUPER_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/sql:/docker-entrypoint-initdb.d:ro
+    ports: ["5432:5432"]
+
+  asterisk-a:
+    <<: *asterisk-base
+    hostname: asterisk-a
+    network_mode: host
+
+  asterisk-b:
+    <<: *asterisk-base
+    hostname: asterisk-b
+    profiles: [ha]
+    network_mode: host
+
+  kamailio:
+    image: ghcr.io/kamailio/kamailio-ci:5.7-alpine
+    restart: unless-stopped
+    profiles: [sbc]
+    network_mode: host
+    volumes:
+      - ./kamailio/kamailio.cfg:/etc/kamailio/kamailio.cfg:ro
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prom-data:/prometheus
+    ports: ["9090:9090"]
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+
+  asterisk-exporter:
+    image: ghcr.io/raoulh/asterisk_exporter:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      ASTERISK_HOST: 127.0.0.1
+      ASTERISK_AMI_USER: ${ASTERISK_AMI_USER}
+      ASTERISK_AMI_PASSWORD: ${ASTERISK_AMI_PASSWORD}
+    depends_on: [asterisk-a]
+
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    restart: unless-stopped
+    network_mode: host
+    cap_add: [NET_ADMIN, NET_RAW]
+    volumes:
+      - asterisk-logs:/var/log/asterisk:ro
+      - ./monitoring/fail2ban:/data:ro
+
+volumes:
+  pgdata:
+  asterisk-spool:
+  asterisk-logs:
+  recordings:
+  prom-data:
+  grafana-data:

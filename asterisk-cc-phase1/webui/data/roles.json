@@ -1,0 +1,52 @@
+{
+  "roles": {
+    "admin": {
+      "label": "Администратор",
+      "permissions": [
+        "*",
+        "admin.users",
+        "admin.roles",
+        "admin.groups",
+        "admin.queues"
+      ]
+    },
+    "supervisor": {
+      "label": "Супервизор",
+      "permissions": [
+        "dashboard.view",
+        "agents.view",
+        "queues.view",
+        "recordings.listen",
+        "recordings.download",
+        "spy.listen",
+        "spy.whisper",
+        "spy.barge",
+        "audit.view",
+        "reports.view"
+      ]
+    },
+    "qa": {
+      "label": "Контроль качества",
+      "permissions": [
+        "dashboard.view",
+        "recordings.listen",
+        "recordings.download",
+        "audit.view"
+      ]
+    },
+    "agent": {
+      "label": "Оператор",
+      "permissions": [
+        "workspace.view",
+        "history.view",
+        "kb.view",
+        "breaks.view",
+        "catalog.view"
+      ]
+    },
+    "auditor": {
+      "label": "Аудитор",
+      "permissions": ["audit.view", "recordings.download"]
+    }
+  }
+}

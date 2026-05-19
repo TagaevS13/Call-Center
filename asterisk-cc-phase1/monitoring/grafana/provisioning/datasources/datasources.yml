@@ -1,0 +1,19 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+  - name: Postgres-CC
+    type: postgres
+    access: proxy
+    url: db-1:5432
+    user: report
+    secureJsonData:
+      password: changeme
+    jsonData:
+      database: asterisk_cc
+      sslmode: require
+      postgresVersion: 1600
+      timescaledb: false

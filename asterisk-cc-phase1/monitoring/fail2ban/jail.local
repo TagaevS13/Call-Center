@@ -1,0 +1,24 @@
+[DEFAULT]
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+backend  = auto
+
+[asterisk]
+enabled  = true
+filter   = asterisk
+logpath  = /var/log/asterisk/messages
+         /var/log/asterisk/full
+         /var/log/asterisk/security
+maxretry = 5
+findtime = 10m
+bantime  = 24h
+action   = iptables-allports[name=asterisk, protocol=all]
+
+[asterisk-pjsip]
+enabled  = true
+filter   = asterisk
+logpath  = /var/log/asterisk/security
+maxretry = 3
+findtime = 5m
+bantime  = 24h

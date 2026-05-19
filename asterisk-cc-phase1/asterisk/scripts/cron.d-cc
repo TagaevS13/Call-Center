@@ -1,0 +1,11 @@
+# Drop into /etc/cron.d/cc on each Asterisk node (or on a single batch host).
+PG_HOST=db-1.example.local
+PG_PORT=5432
+PG_DB=asterisk_cc
+PG_USER=app
+PG_PASSWORD=changeme
+
+* * * * * asterisk /opt/cc/scripts/queue_log_import.py --once >> /var/log/asterisk/queue_log_import.log 2>&1
+*/5 * * * * asterisk /opt/cc/scripts/refresh_dashboards.sh >> /var/log/asterisk/refresh_dashboards.log 2>&1
+17 1 * * * postgres /usr/bin/psql -d asterisk_cc -c "SELECT partition_maintenance();" >> /var/log/asterisk/partman.log 2>&1
+33 2 * * * postgres /opt/cc/scripts/retention_apply.sh >> /var/log/asterisk/retention.log 2>&1

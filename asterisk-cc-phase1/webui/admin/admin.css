@@ -1,0 +1,15 @@
+.admin-main { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.admin-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.admin-toolbar .spacer { flex: 1; }
+.tab-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.tab-bar .btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+.panel { display: none; flex-direction: column; gap: 10px; min-height: 0; }
+.panel.active { display: flex; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 0; }
+@media (max-width: 960px) { .split { grid-template-columns: 1fr; } }
+.form-grid { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; align-items: center; max-width: 520px; }
+.form-grid input, .form-grid select { width: 100%; }
+.perm-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 200px; overflow: auto; }
+.perm-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); }
+.perm-chip.on { border-color: var(--acc); color: var(--acc); }
+.badge-role { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--bg-2); }

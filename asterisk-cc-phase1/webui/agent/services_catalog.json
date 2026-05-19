@@ -1,0 +1,189 @@
+{
+  "version": 1,
+  "updated_at": "2026-05-19",
+  "categories": [
+    {
+      "id": "abonent-fiz",
+      "name": "Абонент физическое лицо",
+      "items": [
+        { "id": "abf-01", "code": "AF.REG",     "name": "Регистрация нового номера" },
+        { "id": "abf-02", "code": "AF.LOST",    "name": "Утеря SIM-карты" },
+        { "id": "abf-03", "code": "AF.CHANGE",  "name": "Смена паспортных данных" },
+        { "id": "abf-04", "code": "AF.BLOCK",   "name": "Блокировка номера по заявлению" },
+        { "id": "abf-05", "code": "AF.UNBLOCK", "name": "Разблокировка номера" }
+      ]
+    },
+    {
+      "id": "3g",
+      "name": "3G связь",
+      "items": [
+        { "id": "3g-01", "code": "3G.NO",   "name": "Отсутствует 3G в локации" },
+        { "id": "3g-02", "code": "3G.SLOW", "name": "Низкая скорость передачи данных" },
+        { "id": "3g-03", "code": "3G.SET",  "name": "Настройки APN / точки доступа" }
+      ]
+    },
+    {
+      "id": "call-register",
+      "name": "Call Register",
+      "items": [
+        { "id": "cr-01", "code": "CR.OUT", "name": "Регистрация исходящих вызовов" },
+        { "id": "cr-02", "code": "CR.IN",  "name": "Регистрация входящих вызовов" }
+      ]
+    },
+    {
+      "id": "gprs",
+      "name": "GPRS",
+      "items": [
+        { "id": "gprs-01", "code": "GPRS.NO",  "name": "Не работает GPRS" },
+        { "id": "gprs-02", "code": "GPRS.SET", "name": "Настройки GPRS" }
+      ]
+    },
+    {
+      "id": "ip-telephony",
+      "name": "IP-телефония",
+      "items": [
+        { "id": "ipt-01", "code": "IPT.CONN", "name": "Невозможно подключиться к IP-телефонии" },
+        { "id": "ipt-02", "code": "IPT.QOS",  "name": "Низкое качество голоса по IP" }
+      ]
+    },
+    {
+      "id": "mms",
+      "name": "MMS-сообщения",
+      "items": [
+        { "id": "mms-01", "code": "MMS.SEND", "name": "Не отправляется MMS" },
+        { "id": "mms-02", "code": "MMS.RECV", "name": "Не приходит MMS" }
+      ]
+    },
+    {
+      "id": "mobigprs",
+      "name": "MobiGPRS",
+      "items": [
+        { "id": "mgprs-01", "code": "MGP.BUY",  "name": "Покупка пакета MobiGPRS" },
+        { "id": "mgprs-02", "code": "MGP.INFO", "name": "Информация по пакету" }
+      ]
+    },
+    {
+      "id": "mobinet",
+      "name": "Mobinet",
+      "items": [
+        { "id": "mn-01", "code": "MN.BUY",   "name": "Покупка пакета Mobinet" },
+        { "id": "mn-02", "code": "MN.GIFT",  "name": "Подарок пакета Mobinet" }
+      ]
+    },
+    {
+      "id": "mobisms-vn",
+      "name": "MobiSMS/MMS внутренние",
+      "items": [
+        { "id": "mvn-01", "code": "MVN.BUY",  "name": "Покупка пакета (внутренние направления)" },
+        { "id": "mvn-02", "code": "MVN.INFO", "name": "Информация по пакету" }
+      ]
+    },
+    {
+      "id": "mobisms-na",
+      "name": "MobiSMS/MMS все направления",
+      "items": [
+        { "id": "mna-01",  "code": "MNA.USSD.BUY",   "name": "Покупка USSD-командой" },
+        { "id": "mna-02",  "code": "MNA.SMS.BUY",    "name": "Покупка SMS-командой" },
+        { "id": "mna-03",  "code": "MNA.ISSUE",      "name": "Сложности с пользованием услугой" },
+        { "id": "mna-04",  "code": "MNA.BAL",        "name": "Проверка остатка" },
+        { "id": "mna-05",  "code": "MNA.INFO",       "name": "Информация об услуге" },
+        { "id": "mna-06",  "code": "MNA.GIFT.USSD",  "name": "Подарок USSD-командой" },
+        { "id": "mna-07",  "code": "MNA.GIFT.SMS",   "name": "Подарок SMS-сообщением" },
+        { "id": "mna-08",  "code": "MNA.GIFT.HIDE",  "name": "Подарок без ведома абонента" },
+        { "id": "mna-09",  "code": "MNA.REFUND",     "name": "Возврат средств за Mobi-пакет" },
+        { "id": "mna-10",  "code": "MNA.CANCEL",     "name": "Возврат (аннулирование) Моби-пакетов не владельцу" }
+      ]
+    },
+    {
+      "id": "mobimin-vn",
+      "name": "MobiМИНУТ внутренние",
+      "items": [
+        { "id": "mmv-01", "code": "MMV.BUY",  "name": "Покупка пакета минут (внутр.)" },
+        { "id": "mmv-02", "code": "MMV.INFO", "name": "Информация по пакету" }
+      ]
+    },
+    {
+      "id": "mobimin-na",
+      "name": "MobiМИНУТ на все направления",
+      "items": [
+        { "id": "mmn-01", "code": "MMN.BUY",  "name": "Покупка пакета минут" },
+        { "id": "mmn-02", "code": "MMN.GIFT", "name": "Подарок минут" }
+      ]
+    },
+    {
+      "id": "pin-sim",
+      "name": "Pin code SIM-карты",
+      "items": [
+        { "id": "pin-01", "code": "PIN.RESET", "name": "Сброс PIN-кода" },
+        { "id": "pin-02", "code": "PIN.PUK",   "name": "Запрос PUK-кода" }
+      ]
+    },
+    {
+      "id": "sms",
+      "name": "SMS-сообщения",
+      "items": [
+        { "id": "sms-01", "code": "SMS.SEND", "name": "Не отправляется SMS" },
+        { "id": "sms-02", "code": "SMS.RECV", "name": "Не приходит SMS" }
+      ]
+    },
+    {
+      "id": "asuu",
+      "name": "АСУУ",
+      "items": [
+        { "id": "asuu-01", "code": "ASUU.CONN", "name": "Подключение услуги АСУУ" },
+        { "id": "asuu-02", "code": "ASUU.OFF",  "name": "Отключение услуги АСУУ" }
+      ]
+    },
+    {
+      "id": "ussd",
+      "name": "USSD-команды",
+      "items": [
+        { "id": "ussd-01", "code": "USSD.LIST", "name": "Список USSD-команд" },
+        { "id": "ussd-02", "code": "USSD.ERR",  "name": "Ошибки при выполнении USSD" }
+      ]
+    },
+    {
+      "id": "new-number",
+      "name": "Новый номер",
+      "items": [
+        { "id": "nn-01", "code": "NN.RESERVE", "name": "Резерв красивого номера" },
+        { "id": "nn-02", "code": "NN.SWAP",    "name": "Замена номера" }
+      ]
+    },
+    {
+      "id": "vpn",
+      "name": "VPN",
+      "items": [
+        { "id": "vpn-01", "code": "VPN.SET",  "name": "Настройка корпоративной VPN" },
+        { "id": "vpn-02", "code": "VPN.LIST", "name": "Список членов VPN" }
+      ]
+    },
+    {
+      "id": "promo",
+      "name": "Акции к праздникам",
+      "items": [
+        { "id": "promo-01", "code": "PR.INFO",   "name": "Информация о текущей акции" },
+        { "id": "promo-02", "code": "PR.OPTIN",  "name": "Участие в акции" }
+      ]
+    },
+    {
+      "id": "thanks",
+      "name": "Благодарность",
+      "items": [
+        { "id": "th-01", "code": "TH.OP",    "name": "Благодарность оператору" },
+        { "id": "th-02", "code": "TH.QUAL", "name": "Благодарность за качество" }
+      ]
+    }
+  ],
+  "skill_queues": [
+    { "id": 23, "name": "Ashan" },
+    { "id": 25, "name": "Mr AVVAL" },
+    { "id": 35, "name": "VOLTE" },
+    { "id": 36, "name": "Test Yuztek" },
+    { "id": 4,  "name": "VIP" },
+    { "id": 6,  "name": "Ishchodyashshya zvonki" },
+    { "id": 7,  "name": "support" },
+    { "id": 8,  "name": "sales" },
+    { "id": 9,  "name": "billing" }
+  ]
+}

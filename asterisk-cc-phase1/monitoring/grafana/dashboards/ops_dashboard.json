@@ -1,0 +1,52 @@
+{
+  "title": "CC Operations",
+  "uid": "cc-ops",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Concurrent calls",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "sum(asterisk_active_channels)"}
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Available agents (all queues)",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {"expr": "sum(asterisk_queue_available_agents)"}
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Queue longest wait (s)",
+      "datasource": "Prometheus",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"expr": "asterisk_queue_longest_wait_seconds", "legendFormat": "{{queue}}"}
+      ]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "SLA last 24h",
+      "datasource": "Postgres-CC",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 10},
+      "targets": [
+        {
+          "rawSql": "SELECT queuename, sum(offered) AS offered, sum(handled) AS handled, sum(abandoned) AS abandoned, round(avg(asa)::numeric,1) AS asa, round(avg(aht)::numeric,1) AS aht, round(avg(sla_share)::numeric,3) AS sla FROM mv_queue_calls_5m WHERE bucket > now() - interval '24 hours' GROUP BY queuename ORDER BY offered DESC",
+          "format": "table"
+        }
+      ]
+    }
+  ]
+}

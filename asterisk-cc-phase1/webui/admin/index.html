@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CC Admin</title>
+  <link rel="stylesheet" href="../shared/theme.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="logo"></span><div>Admin</div></div>
+      <div class="nav-item active" data-tab="users"><span class="ic">●</span>Пользователи</div>
+      <div class="nav-item" data-tab="roles"><span class="ic">●</span>Роли</div>
+      <div class="nav-item" data-tab="groups"><span class="ic">●</span>Группы</div>
+      <div class="nav-item" data-tab="priorities"><span class="ic">●</span>Приоритеты</div>
+      <div class="nav-item" data-tab="queues"><span class="ic">●</span>Очереди</div>
+      <div class="nav-spacer"></div>
+      <div class="nav-foot">
+        <div id="who">—</div>
+        <a href="../agent/" style="font-size:12px;color:var(--fg-2)">Agent UI</a>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="row"><h2 style="margin:0;font-size:16px">Настройки кол-центра</h2></div>
+      <div class="row">
+        <button class="btn" id="btn-export-all">Экспорт JSON</button>
+        <button class="btn" id="btn-reset-demo">Сброс демо</button>
+        <button class="btn ghost" id="btn-theme">☾</button>
+        <button class="btn" id="btn-logout">Выйти</button>
+      </div>
+    </header>
+
+    <main class="main admin-main">
+      <!-- Users -->
+      <section class="panel active" data-panel="users">
+        <div class="admin-toolbar">
+          <button class="btn primary" id="btn-user-add">+ Пользователь</button>
+          <input id="user-filter" placeholder="поиск логин / ФИО…" style="max-width:220px" />
+          <div class="spacer"></div>
+          <button class="btn" id="btn-users-export">Экспорт users</button>
+          <label class="btn">Импорт users<input type="file" id="btn-users-import" accept=".json" hidden /></label>
+        </div>
+        <div class="card" style="overflow:auto">
+          <table class="t" id="users-tbl">
+            <thead>
+              <tr>
+                <th>ID</th><th>Логин</th><th>ФИО</th><th>Роль</th><th>SIP</th>
+                <th>Группы</th><th>Skill pick</th><th>Статус</th><th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Roles -->
+      <section class="panel" data-panel="roles">
+        <p style="color:var(--fg-2);font-size:13px;margin:0">
+          Права ролей. В боевом режиме — таблица <code>roles</code> + проверка в API-шлюзе.
+        </p>
+        <div class="split">
+          <div class="card">
+            <table class="t" id="roles-tbl"><thead><tr><th>Роль</th><th>Название</th><th>Прав</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="card" id="role-detail">
+            <h3 style="margin:0 0 8px" id="role-title">—</h3>
+            <div class="perm-list" id="role-perms"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Groups -->
+      <section class="panel" data-panel="groups">
+        <div class="admin-toolbar">
+          <button class="btn primary" id="btn-group-add">+ Группа</button>
+          <div class="spacer"></div>
+          <button class="btn" id="btn-groups-export">Экспорт groups</button>
+          <label class="btn">Импорт groups<input type="file" id="btn-groups-import" accept=".json" hidden /></label>
+        </div>
+        <div class="card" style="overflow:auto">
+          <table class="t" id="groups-tbl">
+            <thead>
+              <tr><th>ID</th><th>Название</th><th>Роль</th><th>Очереди</th><th>Penalty</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Priorities -->
+      <section class="panel" data-panel="priorities">
+        <p style="color:var(--fg-2);font-size:13px;margin:0">
+          Penalty в Asterisk <code>Queue()</code> / <code>AddQueueMember</code>: чем выше — тем ниже приоритет оператора в очереди.
+        </p>
+        <div class="card" style="overflow:auto">
+          <table class="t" id="prio-tbl">
+            <thead><tr><th>Оператор</th><th>Очередь</th><th>Penalty</th><th>Источник</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button class="btn" id="btn-prio-save">Сохранить (демо localStorage)</button>
+      </section>
+
+      <!-- Queues -->
+      <section class="panel" data-panel="queues">
+        <div class="card">
+          <table class="t" id="queues-tbl">
+            <thead><tr><th>Очередь</th><th>SLA (сек)</th><th>Wrap-up</th><th>Описание</th></tr></thead>
+            <tbody>
+              <tr><td>support</td><td>20</td><td>10</td><td>General support</td></tr>
+              <tr><td>sales</td><td>15</td><td>10</td><td>Sales</td></tr>
+              <tr><td>billing</td><td>30</td><td>15</td><td>Billing</td></tr>
+              <tr><td>vip</td><td>10</td><td>10</td><td>VIP customers</td></tr>
+              <tr><td>overflow</td><td>60</td><td>5</td><td>Overflow</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- User edit modal -->
+  <div class="modal-back" id="user-modal">
+    <div class="modal" style="width:480px">
+      <h3 style="margin:0" id="user-modal-title">Пользователь</h3>
+      <div class="form-grid" style="margin-top:12px">
+        <label>Логин</label><input id="um-login" />
+        <label>Пароль</label><input id="um-password" type="password" placeholder="оставьте пустым — не менять" />
+        <label>ФИО</label><input id="um-name" />
+        <label>Роль</label>
+        <select id="um-role">
+          <option value="agent">agent</option>
+          <option value="supervisor">supervisor</option>
+          <option value="qa">qa</option>
+          <option value="admin">admin</option>
+          <option value="auditor">auditor</option>
+        </select>
+        <label>SIP user</label><input id="um-sip" placeholder="1001 (для операторов)" />
+        <label>SIP pass</label><input id="um-sippass" type="password" />
+        <label>Группы</label><input id="um-groups" placeholder="support_l1, billing" />
+        <label>Skill queues</label>
+        <label class="row" style="gap:8px;grid-column:2">
+          <input type="checkbox" id="um-pick-skills" checked />
+          <span>Разрешить панель «Select skill queues»</span>
+        </label>
+        <label>Skill ID</label>
+        <input id="um-skill-ids" placeholder="7, 9 — если панель выключена" />
+        <label>Статус</label>
+        <select id="um-status"><option value="active">active</option><option value="disabled">disabled</option></select>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-top:14px">
+        <button class="btn" id="um-cancel">Отмена</button>
+        <button class="btn primary" id="um-save">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+groups:
+  - name: voice
+    rules:
+      - alert: AsteriskDown
+        expr: up{job="asterisk"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Asterisk node {{ $labels.instance }} is down"
+
+      - alert: HighConcurrentCalls
+        expr: asterisk_active_channels > 180
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Concurrent calls > 180 on {{ $labels.instance }}"
+
+      - alert: QueueLongestWaitHigh
+        expr: max_over_time(asterisk_queue_longest_wait_seconds[5m]) > 60
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Queue {{ $labels.queue }} longest wait > 60s"
+
+      - alert: NoAvailableAgents
+        expr: asterisk_queue_available_agents == 0
+        for: 3m
+        labels: {severity: critical}
+        annotations:
+          summary: "No available agents in queue {{ $labels.queue }}"
+
+  - name: storage
+    rules:
+      - alert: RecordingsDiskLow
+        expr: node_filesystem_avail_bytes{mountpoint="/var/spool/asterisk/recordings"}
+              / node_filesystem_size_bytes{mountpoint="/var/spool/asterisk/recordings"} < 0.10
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Recordings storage <10% free"
+
+      - alert: PgWalArchiveLag
+        expr: pg_stat_archiver_failed_count > 0
+        for: 10m
+        labels: {severity: critical}
+        annotations:
+          summary: "Postgres WAL archiver has failures"

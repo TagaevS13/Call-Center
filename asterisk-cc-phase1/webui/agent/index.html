@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CC Agent · Workspace</title>
+  <link rel="stylesheet" href="../shared/theme.css" />
+  <link rel="stylesheet" href="agent.css" />
+</head>
+<body>
+  <!-- SIP settings (portal login first) -->
+  <div class="modal-back" id="sip-modal">
+    <div class="modal">
+      <div class="brand"><span class="logo"></span><div>Подключение к Asterisk</div></div>
+      <p style="color:var(--fg-2);font-size:12px;margin:0 0 10px" id="sip-who">—</p>
+      <div class="stack">
+        <label class="field"><span>Внутренний номер (SIP)</span>
+          <input id="cfg-user" readonly placeholder="1001" />
+          <span style="font-size:11px;color:var(--fg-2)">Назначен админом — это не логин</span>
+        </label>
+        <label class="field"><span>WSS Asterisk</span>
+          <input id="cfg-wss" placeholder="wss://cc.example.local:8089/ws" />
+        </label>
+        <label class="field"><span>SIP домен</span>
+          <input id="cfg-domain" placeholder="cc.example.local" />
+        </label>
+        <label class="field row" style="flex-direction:row; align-items:center; gap:8px;">
+          <input id="cfg-demo" type="checkbox" checked />
+          <span>Демо-режим (без подключения к Asterisk)</span>
+        </label>
+        <div class="row" style="justify-content:flex-end;">
+          <button class="btn" id="btn-sip-cancel">Отмена</button>
+          <button class="btn primary" id="btn-sip-ok">Продолжить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Select skill queues modal (CSP-style after login) -->
+  <div class="modal-back" id="skills-modal">
+    <div class="modal" style="width: 460px">
+      <div class="row"><h3 style="margin:0">Select skill queues</h3>
+        <div class="spacer"></div>
+        <button class="btn ghost icon" id="skills-close">✕</button></div>
+      <div style="color: var(--fg-2); font-size:12px; margin: 6px 0 8px">
+        Оператор логинится только в выбранные очереди. В Asterisk это AddQueueMember для каждой.
+      </div>
+      <div class="row" style="margin-bottom:6px">
+        <label class="row" style="gap:6px"><input type="checkbox" id="skills-all" /> <span>Select all</span></label>
+        <div class="spacer"></div>
+        <input id="skills-search" placeholder="фильтр…" style="width:140px" />
+      </div>
+      <table class="t" id="skills-tbl">
+        <thead><tr><th style="width:32px"></th><th>Skill ID</th><th>Skill name</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="row" style="justify-content:flex-end; margin-top:10px">
+        <button class="btn"          id="skills-cancel">Cancel</button>
+        <button class="btn primary"  id="skills-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div class="app" id="app" style="display:none">
+    <aside class="sidebar">
+      <div class="brand"><span class="logo"></span><div>Agent</div></div>
+      <div class="nav-item active" data-section="workspace"><span class="ic">●</span>Рабочая область</div>
+      <div class="nav-item"         data-section="history"><span class="ic">●</span>История</div>
+      <div class="nav-item"         data-section="kb"><span class="ic">●</span>База знаний</div>
+      <div class="nav-item"         data-section="breaks"><span class="ic">●</span>Перерывы</div>
+      <div class="nav-item"         data-section="catalog"><span class="ic">●</span>Каталог обращений</div>
+      <div class="nav-spacer"></div>
+      <div class="nav-foot">
+        <div id="who">—</div>
+        <div id="version">v1.1.0</div>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="row">
+        <span class="pill" id="conn-pill"><span class="dot"></span><span id="conn-text">disconnected</span></span>
+        <span class="pill" id="state-pill"><span class="dot"></span><span id="state-text">OFFLINE</span></span>
+        <span class="pill" id="time-pill"><span class="dot ok"></span><span id="state-time">00:00</span></span>
+      </div>
+      <div class="row">
+        <input id="global-search" class="gsearch" placeholder="Поиск: номер / SN / IMSI / имя…" />
+        <button class="btn" id="btn-skills" hidden>Очереди</button>
+        <button class="btn" id="btn-pause">Перерыв</button>
+        <button class="btn" id="btn-aftercall">After-call</button>
+        <button class="btn primary" id="btn-ready">Готов</button>
+        <button class="btn ghost" id="btn-admin" title="Админ" hidden>Admin</button>
+        <button class="btn ghost icon" id="btn-theme" title="Theme">☾</button>
+        <button class="btn ghost" id="btn-logout">Выйти</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- ===== Section: Workspace (CSP-style) ===== -->
+      <section class="view" data-view="workspace">
+        <!-- CSP-style call control toolbar -->
+        <div class="csp-toolbar">
+          <button class="ctrl" data-act="busy"     title="Busy">Busy</button>
+          <button class="ctrl" data-act="leave"    title="Leave queue">Leave</button>
+          <button class="ctrl" data-act="release"  title="Release">Release</button>
+          <button class="ctrl prm" data-act="answer" title="Answer">Answer</button>
+          <button class="ctrl" data-act="mute"     title="Mute">Mute</button>
+          <button class="ctrl" data-act="integr"   title="Integration">Integr.</button>
+          <button class="ctrl" data-act="callout"  title="Call Out">Call Out</button>
+          <button class="ctrl" data-act="handle"   title="Handle (Service Type)">Handle…</button>
+          <button class="ctrl" data-act="rbt"      title="Ring-back tone">RBT</button>
+          <button class="ctrl" data-act="hold"     title="Hold call">Hold Call</button>
+          <button class="ctrl" data-act="xfer"     title="Transfer">Transfer</button>
+          <button class="ctrl" data-act="conf"     title="Conference">Conf</button>
+          <button class="ctrl" data-act="dtmf"     title="DTMF">DTMF</button>
+          <span class="spacer"></span>
+          <button class="ctrl" data-act="customer" title="Open customer">Customer</button>
+          <button class="ctrl" data-act="query"    title="Query subscriber">Query</button>
+          <button class="ctrl" data-act="sendsms"  title="Send SMS">Send SMS</button>
+        </div>
+
+        <div class="csp-grid">
+          <!-- LEFT: compact call-info panel (CSP-style) -->
+          <aside class="csp-callinfo">
+            <div class="ci-title" id="ci-status">No call</div>
+            <div class="ci-row"><div class="k">SN</div>          <div class="v" id="ci-sn">—</div></div>
+            <div class="ci-row"><div class="k">Duration</div>    <div class="v" id="ci-dur">00:00:00</div></div>
+            <div class="ci-row"><div class="k">CallingNo</div>   <div class="v" id="ci-calling">—</div></div>
+            <div class="ci-row"><div class="k">CalledNo</div>    <div class="v" id="ci-called">—</div></div>
+            <div class="ci-row"><div class="k">Arranging</div>   <div class="v" id="ci-arr">00:00:00</div></div>
+            <div class="ci-row"><div class="k">WaitTime</div>    <div class="v" id="ci-wait">0</div></div>
+            <div class="ci-row"><div class="k">MDN</div>         <div class="v" id="ci-mdn">—</div></div>
+            <div class="ci-row"><div class="k">Группа</div>      <div class="v" id="ci-group">—</div></div>
+            <div class="ci-row"><div class="k">Call track</div>  <div class="v" id="ci-track">—</div></div>
+            <div class="ci-actions">
+              <button class="btn ghost" id="ci-refresh">Refresh</button>
+            </div>
+
+            <div class="ci-divider"></div>
+            <h4 class="ci-h">Очереди (live)</h4>
+            <table class="t" id="queues-tbl">
+              <thead><tr><th>Q</th><th>wait</th><th>long</th><th>SLA</th></tr></thead>
+              <tbody></tbody>
+            </table>
+
+            <div class="ci-divider"></div>
+            <div class="row" style="gap:6px">
+              <input id="dial-num" placeholder="набор…" style="flex:1; min-width:0" />
+              <button class="btn primary" id="btn-dial">→</button>
+            </div>
+          </aside>
+
+          <!-- RIGHT: Basic Customer Information + 4 service tabs -->
+          <div class="stack csp-main">
+            <section class="card">
+              <div class="row">
+                <h3 style="margin:0">Basic Customer Information</h3>
+                <div class="spacer"></div>
+                <span class="tag" id="call-queue">—</span>
+                <span class="tag" id="call-state">idle</span>
+              </div>
+
+              <div class="csp-form">
+                <label class="cf">
+                  <span>Handled number</span>
+                  <div class="row" style="gap:6px">
+                    <input id="cf-handled" />
+                    <button class="btn" id="cf-query">Query</button>
+                  </div>
+                </label>
+                <label class="cf"><span>Customer name</span>    <input id="cf-name" /></label>
+                <label class="cf"><span>RatePlanName</span>     <input id="cf-rate" /></label>
+                <label class="cf"><span>IMSI</span>             <input id="cf-imsi" /></label>
+                <label class="cf"><span>PIN1</span>             <input id="cf-pin1" /></label>
+                <label class="cf"><span>PUK1</span>             <input id="cf-puk1" /></label>
+                <label class="cf"><span>PIN2</span>             <input id="cf-pin2" /></label>
+                <label class="cf"><span>PUK2</span>             <input id="cf-puk2" /></label>
+                <label class="cf"><span>Core balance</span>     <input id="cf-core" /></label>
+                <label class="cf"><span>Balance</span>          <input id="cf-balance" /></label>
+                <label class="cf"><span>Customer Category</span><input id="cf-cat" /></label>
+                <label class="cf"><span>Customer Code</span>    <input id="cf-code" /></label>
+                <label class="cf"><span>Account Code</span>     <input id="cf-acct" /></label>
+                <label class="cf"><span>ICC ID</span>           <input id="cf-icc" /></label>
+              </div>
+            </section>
+
+            <!-- Service tabs panel -->
+            <section class="card">
+              <div class="row">
+                <div class="tabs" id="sr-tabs">
+                  <div class="tab active" data-tab="sr">Service Request</div>
+                  <div class="tab" data-tab="tt">Related TT</div>
+                  <div class="tab" data-tab="cr">Call Redirects</div>
+                  <div class="tab" data-tab="pl">Product List</div>
+                </div>
+                <div class="spacer"></div>
+                <button class="btn primary" id="btn-fix-service">Зафиксировать обращение</button>
+                <button class="btn ghost"   id="btn-refresh-sr">Refresh</button>
+              </div>
+
+              <div class="tab-pane" data-pane="sr">
+                <table class="t" id="sr-tbl">
+                  <thead><tr><th>SN</th><th>Тип обращения</th><th>Код</th><th>Handle time</th><th>Skill Queue</th><th>Оператор</th><th>Status</th><th></th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="tab-pane" data-pane="tt" hidden>
+                <table class="t" id="tt-tbl">
+                  <thead><tr><th>TT №</th><th>Категория</th><th>Создан</th><th>Назначен</th><th>Status</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="tab-pane" data-pane="cr" hidden>
+                <table class="t" id="cr-tbl">
+                  <thead><tr><th>С</th><th>На</th><th>Тип</th><th>Активна</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="tab-pane" data-pane="pl" hidden>
+                <table class="t" id="pl-tbl">
+                  <thead><tr><th>Продукт</th><th>Статус</th><th>Подключен</th><th>Стоимость</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- Wrap-up quick form -->
+            <section class="card">
+              <div class="row">
+                <h3 style="margin:0">Wrap-up</h3>
+                <div class="spacer"></div>
+                <span class="tag" id="wrap-timer">—</span>
+              </div>
+              <div class="row wrap" style="gap:8px; margin-top:8px">
+                <select id="wrap-outcome">
+                  <option value="">— результат —</option>
+                  <option>Решено</option>
+                  <option>Эскалация</option>
+                  <option>Перезвонить</option>
+                  <option>Тикет создан</option>
+                </select>
+                <input id="wrap-note" placeholder="Комментарий…" style="flex:1; min-width:220px" />
+                <button class="btn primary" id="btn-save-wrap">Сохранить и в Ready</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Section: История (без изменений) ===== -->
+      <section class="view" data-view="history" hidden>
+        <div class="card">
+          <div class="row wrap" style="gap:8px">
+            <h3 style="margin:0">История звонков</h3>
+            <div class="spacer"></div>
+            <select id="fl-period">
+              <option value="today">Сегодня</option>
+              <option value="7">7 дней</option>
+              <option value="30">30 дней</option>
+            </select>
+            <select id="fl-queue">
+              <option value="">все очереди</option>
+              <option>support</option><option>sales</option><option>billing</option><option>vip</option>
+            </select>
+            <select id="fl-outcome">
+              <option value="">любой итог</option>
+              <option value="answered">answered</option>
+              <option value="missed">missed</option>
+            </select>
+            <input id="fl-search" placeholder="Поиск по номеру…" />
+            <button class="btn" id="fl-apply">Применить</button>
+            <button class="btn ghost" id="fl-export">Экспорт CSV</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <table class="t" id="hist-full">
+            <thead><tr>
+              <th>Дата</th><th>Время</th><th>Очередь</th><th>Номер</th><th>Длит.</th><th>Wrap</th><th>Итог</th><th>Запись</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== Section: База знаний ===== -->
+      <section class="view" data-view="kb" hidden>
+        <div class="grid-2">
+          <div class="stack">
+            <div class="card">
+              <div class="row"><h3 style="margin:0">Каталог</h3><div class="spacer"></div>
+                <input id="kb-search" placeholder="Поиск в базе…" style="width:160px" />
+              </div>
+              <div class="kb-tree" id="kb-tree"></div>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="card" id="kb-article">
+              <h3 id="kb-title">— выберите статью —</h3>
+              <div id="kb-meta" style="color:var(--fg-2); font-size:12px; margin-bottom:8px"></div>
+              <div id="kb-body" class="kb-body">Контент статьи откроется здесь.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Section: Перерывы ===== -->
+      <section class="view" data-view="breaks" hidden>
+        <div class="grid-2">
+          <div class="card stack">
+            <h3>Текущий перерыв</h3>
+            <div class="row" style="align-items:baseline; gap:14px">
+              <div class="kpi" id="break-kpi"><div class="n" id="break-timer">00:00</div><div class="u" id="break-reason">не на перерыве</div></div>
+            </div>
+            <div class="row wrap" style="gap:8px">
+              <select id="break-reason-sel">
+                <option value="lunch">Обед (30 мин)</option>
+                <option value="tea">Кофе (15 мин)</option>
+                <option value="restroom">Личное (5 мин)</option>
+                <option value="training">Обучение</option>
+                <option value="meeting">Встреча</option>
+              </select>
+              <button class="btn primary" id="break-start">Начать перерыв</button>
+              <button class="btn danger" id="break-stop">Завершить</button>
+            </div>
+            <div style="color:var(--fg-2); font-size:12px">
+              Asterisk: <span class="kbd">*13&lt;reason&gt;</span> — пауза, <span class="kbd">*14</span> — снять паузу. Запись в <span class="kbd">agent_state_log</span>.
+            </div>
+          </div>
+          <div class="card">
+            <div class="row"><h3 style="margin:0">Перерывы сегодня</h3><div class="spacer"></div>
+              <span class="tag" id="breaks-total">0 мин</span></div>
+            <table class="t" id="breaks-tbl">
+              <thead><tr><th>Начало</th><th>Конец</th><th>Длит.</th><th>Причина</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Section: Каталог обращений (admin) ===== -->
+      <section class="view" data-view="catalog" hidden>
+        <div class="card">
+          <div class="row wrap" style="gap:8px">
+            <h3 style="margin:0">Каталог обращений (services_catalog.json)</h3>
+            <div class="spacer"></div>
+            <span class="tag" id="cat-version">—</span>
+            <button class="btn"        id="cat-reload">Reload</button>
+            <button class="btn"        id="cat-export">Export JSON</button>
+            <label class="btn ghost"   style="cursor:pointer">
+              Import JSON
+              <input type="file" id="cat-import" accept="application/json" hidden />
+            </label>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:14px">
+          <div class="card">
+            <h3>Категории</h3>
+            <table class="t" id="cat-cats">
+              <thead><tr><th>ID</th><th>Название</th><th>Пунктов</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h3 id="cat-cat-title">Пункты категории</h3>
+            <table class="t" id="cat-items">
+              <thead><tr><th>ID</th><th>Code</th><th>Название</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Popular Service Type modal (CSP-style) -->
+  <div class="modal-back" id="svc-modal">
+    <div class="modal svc-modal">
+      <div class="row">
+        <h3 style="margin:0">Handle number: <span id="svc-handle">—</span></h3>
+        <div class="spacer"></div>
+        <button class="btn ghost icon" id="svc-export" title="Export catalog">↧</button>
+        <button class="btn ghost icon" id="svc-close" title="Close">✕</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input id="svc-search" placeholder="Search…" style="flex:1" />
+        <button class="btn"       id="svc-do-search">Search</button>
+        <button class="btn ghost" id="svc-do-clear">Clear</button>
+      </div>
+      <div class="svc-grid" style="margin-top:10px">
+        <aside class="svc-cats">
+          <div class="svc-cats-title">Popular Service Type</div>
+          <div id="svc-cat-list"></div>
+        </aside>
+        <div class="svc-items" id="svc-items"></div>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top:10px">
+        <button class="btn ghost"   id="svc-cancel">Close</button>
+        <button class="btn primary" id="svc-fill">Fill In</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="agent.js"></script>
+</body>
+</html>

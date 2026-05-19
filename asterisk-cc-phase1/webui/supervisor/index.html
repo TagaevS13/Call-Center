@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CC Supervisor · Dashboard</title>
+  <link rel="stylesheet" href="../shared/theme.css" />
+  <link rel="stylesheet" href="supervisor.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="logo"></span><div>Supervisor</div></div>
+      <div class="nav-item active" data-section="dashboard"><span class="ic">●</span>Дашборд</div>
+      <div class="nav-item"         data-section="agents"><span class="ic">●</span>Операторы</div>
+      <div class="nav-item"         data-section="queues"><span class="ic">●</span>Очереди</div>
+      <div class="nav-item"         data-section="recordings"><span class="ic">●</span>Записи разговоров</div>
+      <div class="nav-item"         data-section="sla"><span class="ic">●</span>SLA / Отчёты</div>
+      <div class="nav-item"         data-section="audit"><span class="ic">●</span>Audit</div>
+      <div class="nav-spacer"></div>
+      <div class="nav-foot">
+        <div id="who">supervisor@cc</div>
+        <div>v1.0.0</div>
+      </div>
+    </aside>
+
+    <header class="topbar">
+      <div class="row">
+        <span class="pill"><span class="dot ok"></span><span>connected</span></span>
+        <span class="pill"><span class="dot ok"></span><span id="ts-now">—</span></span>
+      </div>
+      <div class="row">
+        <select id="flt-queue">
+          <option value="">все очереди</option>
+          <option>support</option><option>sales</option><option>billing</option><option>vip</option><option>overflow</option>
+        </select>
+        <button class="btn ghost" id="btn-admin" hidden>Admin</button>
+        <button class="btn ghost icon" id="btn-theme">☾</button>
+        <button class="btn ghost" id="btn-logout">Выйти</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- ===== Section: Дашборд ===== -->
+      <section class="view" data-view="dashboard">
+        <div class="grid-4" id="kpis">
+          <div class="card"><h3>Concurrent calls</h3><div class="kpi"><div class="n" id="kpi-calls">0</div><div class="u">сейчас</div></div></div>
+          <div class="card"><h3>Available agents</h3><div class="kpi ok"><div class="n" id="kpi-agents">0</div><div class="u">READY</div></div></div>
+          <div class="card"><h3>Longest wait</h3><div class="kpi warn"><div class="n" id="kpi-wait">00:00</div><div class="u">по очередям</div></div></div>
+          <div class="card"><h3>SLA (1h)</h3><div class="kpi ok"><div class="n" id="kpi-sla">0%</div><div class="u">средн.</div></div></div>
+        </div>
+
+        <div class="grid-2" style="margin-top:14px">
+          <section class="card">
+            <h3>Очереди (live)</h3>
+            <table class="t" id="q-tbl">
+              <thead><tr><th>Очередь</th><th>В ожид.</th><th>Longest</th><th>Operators</th><th>Offered / Handled / Abnd</th><th>SLA</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </section>
+          <section class="card">
+            <div class="row"><h3 style="margin:0">Последние вызовы</h3><div class="spacer"></div><span class="tag">stream</span></div>
+            <div class="scroll">
+              <table class="t" id="recent-tbl">
+                <thead><tr><th>Время</th><th>Очередь</th><th>Абонент</th><th>Оператор</th><th>Длит.</th><th>Итог</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section class="card" style="margin-top:14px">
+          <div class="row"><h3 style="margin:0">Операторы (быстрый просмотр)</h3><div class="spacer"></div>
+            <input id="agents-search" placeholder="Поиск по имени или SIP" style="width:240px" />
+          </div>
+          <div class="agents-grid" id="agents-grid"></div>
+        </section>
+      </section>
+
+      <!-- ===== Section: Операторы ===== -->
+      <section class="view" data-view="agents" hidden>
+        <div class="card">
+          <div class="row wrap" style="gap:8px">
+            <h3 style="margin:0">Операторы</h3>
+            <div class="spacer"></div>
+            <select id="a-flt-state">
+              <option value="">любой статус</option>
+              <option>READY</option><option>BUSY</option><option>PAUSE</option><option>AFTERCALL</option>
+            </select>
+            <select id="a-flt-queue">
+              <option value="">любая очередь</option>
+              <option>support</option><option>sales</option><option>billing</option><option>vip</option>
+            </select>
+            <input id="a-flt-q" placeholder="Поиск…" />
+            <button class="btn" id="a-flt-apply">Применить</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <table class="t" id="agents-tbl">
+            <thead><tr>
+              <th>SIP</th><th>Имя</th><th>Статус</th><th>В статусе</th><th>Очереди</th><th>Текущий вызов</th><th>Действия</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== Section: Очереди ===== -->
+      <section class="view" data-view="queues" hidden>
+        <div class="grid-2" id="queue-cards"></div>
+      </section>
+
+      <!-- ===== Section: Записи разговоров ===== -->
+      <section class="view" data-view="recordings" hidden>
+        <div class="card">
+          <div class="row wrap" style="gap:8px">
+            <h3 style="margin:0">Записи разговоров</h3>
+            <div class="spacer"></div>
+            <input id="r-date" type="date" />
+            <select id="r-queue">
+              <option value="">все очереди</option>
+              <option>support</option><option>sales</option><option>billing</option><option>vip</option>
+            </select>
+            <input id="r-search" placeholder="MSISDN или uniqueid" />
+            <button class="btn" id="r-apply">Применить</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <table class="t" id="rec-tbl">
+            <thead><tr>
+              <th>Время</th><th>Очередь</th><th>Абонент</th><th>Оператор</th><th>Длит.</th><th>SHA-256</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="card" style="margin-top:14px" id="rec-player" hidden>
+          <div class="row"><h3 style="margin:0" id="rec-title">Запись</h3><div class="spacer"></div>
+            <button class="btn ghost" id="rec-close">✕</button></div>
+          <audio id="rec-audio" controls style="width:100%; margin-top:8px"></audio>
+          <div style="color:var(--fg-2); font-size:12px; margin-top:6px">
+            Доступ к записям проверяется по роли (qa/supervisor/auditor); каждое прослушивание пишется в <span class="kbd">audit_log</span>.
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Section: SLA / Отчёты ===== -->
+      <section class="view" data-view="sla" hidden>
+        <div class="card">
+          <div class="row wrap">
+            <h3 style="margin:0">SLA / Отчёты</h3>
+            <div class="spacer"></div>
+            <select id="sla-period">
+              <option value="1">1 час</option>
+              <option value="24" selected>24 часа</option>
+              <option value="168">7 дней</option>
+            </select>
+            <button class="btn" id="sla-refresh">Обновить</button>
+            <button class="btn ghost" id="sla-export">Экспорт CSV</button>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:14px">
+          <section class="card">
+            <h3>SLA по очередям</h3>
+            <div id="sla-bars" class="bars"></div>
+          </section>
+          <section class="card">
+            <h3>Сводная таблица</h3>
+            <table class="t" id="sla-tbl">
+              <thead><tr><th>Очередь</th><th>Offered</th><th>Handled</th><th>Abnd</th><th>ASA</th><th>AHT</th><th>SLA</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </section>
+        </div>
+      </section>
+
+      <!-- ===== Section: Audit ===== -->
+      <section class="view" data-view="audit" hidden>
+        <div class="card">
+          <div class="row wrap">
+            <h3 style="margin:0">Audit log</h3>
+            <div class="spacer"></div>
+            <input id="au-actor" placeholder="actor" />
+            <select id="au-action">
+              <option value="">любое действие</option>
+              <option>listen</option><option>whisper</option><option>barge</option>
+              <option>pause</option><option>unpause</option><option>remove</option>
+              <option>recording_view</option>
+            </select>
+            <button class="btn" id="au-apply">Применить</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <table class="t" id="au-tbl">
+            <thead><tr><th>Время</th><th>Actor</th><th>Роль</th><th>Action</th><th>Target</th><th>IP</th><th>Payload</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Agent action popover -->
+  <div class="modal-back" id="agent-modal">
+    <div class="modal">
+      <div class="row"><h3 style="margin:0" id="m-name">Оператор</h3><div class="spacer"></div>
+        <button class="btn ghost icon" id="m-close">✕</button></div>
+      <div class="kv" style="margin-top:8px">
+        <label>SIP</label><div class="v" id="m-sip">—</div>
+        <label>Статус</label><div class="v" id="m-state">—</div>
+        <label>Очереди</label><div class="v" id="m-queues">—</div>
+        <label>Текущий вызов</label><div class="v" id="m-call">—</div>
+      </div>
+      <div class="row wrap" style="margin-top:10px">
+        <button class="btn"          data-act="listen">Listen *33</button>
+        <button class="btn"          data-act="whisper">Whisper *34</button>
+        <button class="btn warn"     data-act="barge">Barge</button>
+        <button class="btn"          data-act="pause">Pause</button>
+        <button class="btn primary"  data-act="unpause">Unpause</button>
+        <button class="btn danger"   data-act="remove">Remove from queue</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="supervisor.js"></script>
+</body>
+</html>

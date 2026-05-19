@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "updated_at": "2026-05-19",
+  "groups": [
+    {
+      "id": "admins",
+      "name": "Администраторы",
+      "description": "Полный доступ к настройкам",
+      "default_role": "admin",
+      "queues": []
+    },
+    {
+      "id": "supervisors",
+      "name": "Супервизоры",
+      "description": "Мониторинг и управление сменой",
+      "default_role": "supervisor",
+      "queues": ["support", "sales", "billing", "vip", "overflow"]
+    },
+    {
+      "id": "support_l1",
+      "name": "Поддержка L1",
+      "description": "Первая линия поддержки",
+      "default_role": "agent",
+      "queues": ["support", "overflow"],
+      "default_penalty": 0
+    },
+    {
+      "id": "support_l2",
+      "name": "Поддержка L2",
+      "description": "Эскалация сложных обращений",
+      "default_role": "agent",
+      "queues": ["support", "vip"],
+      "default_penalty": 5
+    },
+    {
+      "id": "sales",
+      "name": "Продажи",
+      "description": "Входящие продажи и допродажи",
+      "default_role": "agent",
+      "queues": ["sales"],
+      "default_penalty": 0
+    },
+    {
+      "id": "billing",
+      "name": "Биллинг",
+      "description": "Вопросы по счетам и тарифам",
+      "default_role": "agent",
+      "queues": ["billing"],
+      "default_penalty": 0
+    },
+    {
+      "id": "vip",
+      "name": "VIP",
+      "description": "Приоритетные абоненты",
+      "default_role": "agent",
+      "queues": ["vip"],
+      "default_penalty": 10
+    },
+    {
+      "id": "qa",
+      "name": "Контроль качества",
+      "description": "Прослушивание и оценка",
+      "default_role": "qa",
+      "queues": []
+    },
+    {
+      "id": "audit",
+      "name": "Аудит",
+      "description": "Только чтение журналов",
+      "default_role": "auditor",
+      "queues": []
+    }
+  ]
+}

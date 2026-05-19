@@ -1,0 +1,30 @@
+# Environment and secrets
+.env
+*.env.local
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.cursor/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs and runtime
+*.log
+*.unl
+*.old
+
+# Docker volumes (local)
+**/pgdata/
+**/recordings/
+
+# Backups
+*.tar
+*.tar.gz
+*.zip

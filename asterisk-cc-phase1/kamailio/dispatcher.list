@@ -1,0 +1,3 @@
+# setid destination flags priorities description
+1 sip:ast-a.example.local:5060 0 50 asterisk-active
+1 sip:ast-b.example.local:5060 0 25 asterisk-standby
