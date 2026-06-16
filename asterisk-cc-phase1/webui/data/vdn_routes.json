@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "updated_at": "2026-05-26",
+  "routes": [
+    {
+      "id": 1,
+      "number": "2006",
+      "name": "Контакт-центр (главный VDN)",
+      "description": "IVR: выбор языка, затем направление в skill queue",
+      "route_type": "ivr_language",
+      "enabled": true,
+      "language_options": [
+        { "digit": "1", "lang": "ru", "label": "Русский", "queue": "russkaya", "skill_queue_id": 8 },
+        { "digit": "2", "lang": "tj", "label": "Тоҷикӣ", "queue": "tajikskaya", "skill_queue_id": 7 },
+        { "digit": "3", "lang": "en", "label": "English", "queue": "angliyskaya", "skill_queue_id": 1 },
+        { "digit": "4", "lang": "uz", "label": "O'zbek", "queue": "uzbekskaya", "skill_queue_id": 2 }
+      ]
+    },
+    {
+      "id": 2,
+      "number": "8800",
+      "name": "Прямой вход — русская линия",
+      "description": "Без IVR, сразу в очередь",
+      "route_type": "queue_direct",
+      "queue": "russkaya",
+      "skill_queue_id": 8,
+      "enabled": true,
+      "language_options": []
+    },
+    {
+      "id": 3,
+      "number": "2007",
+      "name": "VIP линия",
+      "description": "Прямо в VIP очередь",
+      "route_type": "queue_direct",
+      "queue": "vip",
+      "skill_queue_id": 20,
+      "enabled": true,
+      "language_options": []
+    }
+  ]
+}

@@ -16,10 +16,11 @@
     {
       "id": "3g",
       "name": "3G связь",
+      "breadcrumb_parent": "Абонент физическое лицо",
       "items": [
-        { "id": "3g-01", "code": "3G.NO",   "name": "Отсутствует 3G в локации" },
-        { "id": "3g-02", "code": "3G.SLOW", "name": "Низкая скорость передачи данных" },
-        { "id": "3g-03", "code": "3G.SET",  "name": "Настройки APN / точки доступа" }
+        { "id": "3g-01", "code": "3G.NO",   "name": "Отсутствует 3G в локации", "handle_title": "1) Информация о 3G" },
+        { "id": "3g-02", "code": "3G.SLOW", "name": "Низкая скорость передачи данных", "handle_title": "2) Информация о скорости 3G" },
+        { "id": "3g-03", "code": "3G.SET",  "name": "Настройки APN / точки доступа", "handle_title": "3) Настройки APN" }
       ]
     },
     {
@@ -33,6 +34,7 @@
     {
       "id": "gprs",
       "name": "GPRS",
+      "breadcrumb_parent": "Абонент физическое лицо",
       "items": [
         { "id": "gprs-01", "code": "GPRS.NO",  "name": "Не работает GPRS" },
         { "id": "gprs-02", "code": "GPRS.SET", "name": "Настройки GPRS" }
@@ -49,6 +51,7 @@
     {
       "id": "mms",
       "name": "MMS-сообщения",
+      "breadcrumb_parent": "Абонент физическое лицо",
       "items": [
         { "id": "mms-01", "code": "MMS.SEND", "name": "Не отправляется MMS" },
         { "id": "mms-02", "code": "MMS.RECV", "name": "Не приходит MMS" }

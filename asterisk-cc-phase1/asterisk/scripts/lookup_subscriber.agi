@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""FastAGI: lookup_subscriber — SUB_SEGMENT, ЧС (глобальный), VIP (глобальный)."""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))
+from subscriber_access_lib import (  # noqa: E402
+    DEFAULT_JSON,
+    GROUPS_JSON,
+    agi_read_env,
+    agi_send,
+    check_access,
+    load_json,
+    normalize_msisdn,
+    set_var,
+)
+
+
+def main() -> None:
+    env = agi_read_env()
+    caller = env.get("agi_callerid") or ""
+    if env.get("agi_network_script_args"):
+        parts = env["agi_network_script_args"].split()
+        if parts:
+            caller = parts[0]
+
+    access_path = os.environ.get("CC_SUBSCRIBERS_ACCESS_JSON", DEFAULT_JSON)
+    groups_path = os.environ.get("CC_GROUPS_JSON", GROUPS_JSON)
+    doc = load_json(access_path)
+    groups_doc = load_json(groups_path)
+    acc = check_access(doc, caller, groups_doc)
+
+    set_var("SUB_SEGMENT", "unknown")
+    set_var("SUB_LANG", "ru")
+    set_var("SUB_BLOCKED", "1" if acc["blocked"] else "0")
+    set_var("SUB_BLOCK_REASON", acc["block_reason"] or "")
+    set_var("SUB_VIP", "1" if acc["vip"] else "0")
+    set_var("SUB_VIP_QUEUE", acc["vip_queue"] or "vip")
+
+    agi_send(
+        'VERBOSE "lookup_subscriber msisdn=%s blocked=%s vip=%s" 1'
+        % (normalize_msisdn(caller), acc["blocked"], acc["vip"])
+    )
+
+
+if __name__ == "__main__":
+    main()

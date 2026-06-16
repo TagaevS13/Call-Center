@@ -11,10 +11,12 @@
   <div class="app" id="app">
     <aside class="sidebar">
       <div class="brand"><span class="logo"></span><div>Admin</div></div>
-      <div class="nav-item active" data-tab="users"><span class="ic">●</span>Пользователи</div>
+      <div class="nav-item active" data-tab="users"><span class="ic">●</span>Агенты / Пользователи</div>
+      <div class="nav-item" data-tab="skill-settings"><span class="ic">●</span>Настройка скил групп</div>
+      <div class="nav-item" data-tab="vdn"><span class="ic">●</span>Короткие номера (VDN)</div>
+      <div class="nav-item" data-tab="subscribers"><span class="ic">●</span>Абоненты (ЧС / VIP)</div>
+      <div class="nav-item" data-tab="crm"><span class="ic">●</span>CRM конструктор</div>
       <div class="nav-item" data-tab="roles"><span class="ic">●</span>Роли</div>
-      <div class="nav-item" data-tab="groups"><span class="ic">●</span>Группы</div>
-      <div class="nav-item" data-tab="priorities"><span class="ic">●</span>Приоритеты</div>
       <div class="nav-item" data-tab="queues"><span class="ic">●</span>Очереди</div>
       <div class="nav-spacer"></div>
       <div class="nav-foot">
@@ -24,21 +26,22 @@
     </aside>
 
     <header class="topbar">
-      <div class="row"><h2 style="margin:0;font-size:16px">Настройки кол-центра</h2></div>
+      <div class="row"><h2 style="margin:0;font-size:16px">Web Configuration Console</h2></div>
       <div class="row">
+        <button class="btn primary" id="btn-apply-asterisk" title="Синхронизировать Postgres → Asterisk">Применить на Asterisk</button>
         <button class="btn" id="btn-export-all">Экспорт JSON</button>
-        <button class="btn" id="btn-reset-demo">Сброс демо</button>
+        <button class="btn" id="btn-reset-demo" title="Загрузить webui/data/*.json в Postgres">Загрузить seed</button>
         <button class="btn ghost" id="btn-theme">☾</button>
         <button class="btn" id="btn-logout">Выйти</button>
       </div>
     </header>
 
     <main class="main admin-main">
-      <!-- Users -->
+      <!-- Agents / Users (CSP-style list) -->
       <section class="panel active" data-panel="users">
         <div class="admin-toolbar">
-          <button class="btn primary" id="btn-user-add">+ Пользователь</button>
-          <input id="user-filter" placeholder="поиск логин / ФИО…" style="max-width:220px" />
+          <button class="btn primary" id="btn-user-add">+ Добавить</button>
+          <input id="user-filter" placeholder="поиск ID / ФИО…" style="max-width:220px" />
           <div class="spacer"></div>
           <button class="btn" id="btn-users-export">Экспорт users</button>
           <label class="btn">Импорт users<input type="file" id="btn-users-import" accept=".json" hidden /></label>
@@ -47,13 +50,131 @@
           <table class="t" id="users-tbl">
             <thead>
               <tr>
-                <th>ID</th><th>Логин</th><th>ФИО</th><th>Роль</th><th>SIP</th>
-                <th>Группы</th><th>Skill pick</th><th>Статус</th><th></th>
+                <th>Agent ID</th><th>ФИО</th><th>Роль</th><th>Группа навыков</th>
+                <th>Навыки</th><th>SIP</th><th>Статус</th><th></th>
               </tr>
             </thead>
             <tbody></tbody>
           </table>
         </div>
+      </section>
+
+      <!-- Skill settings: queues + groups (CSP) -->
+      <section class="panel skill-settings-panel" data-panel="skill-settings">
+        <div class="workflow-hint">
+          Как в CSP: сначала <strong>направления вызовов</strong> (Skill Queue), затем объедините их в <strong>Skill Group</strong>.
+          Агенту на карточке назначается группа или отдельные навыки.
+        </div>
+
+        <h3 class="section-title">Направления вызовов (Skill Queue)</h3>
+        <div class="admin-toolbar">
+          <button class="btn primary" id="btn-queue-add">+ Направление</button>
+          <div class="spacer"></div>
+          <button class="btn" id="btn-queues-export">Экспорт skill_queues</button>
+          <label class="btn">Импорт<input type="file" id="btn-queues-import" accept=".json" hidden /></label>
+        </div>
+        <div class="card skill-table-card">
+          <table class="t skill-table" id="queues-tbl">
+            <thead><tr><th>ID</th><th>Название</th><th>Очередь Asterisk</th><th>Тип</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <h3 class="section-title">Группы навыков (Skill Group)</h3>
+        <div class="admin-toolbar">
+          <button class="btn primary" id="btn-group-add">+ Skill Group</button>
+          <div class="spacer"></div>
+          <button class="btn" id="btn-groups-export">Экспорт groups</button>
+          <label class="btn">Импорт groups<input type="file" id="btn-groups-import" accept=".json" hidden /></label>
+        </div>
+        <div class="card skill-table-card skill-table-card--groups">
+          <table class="t skill-table" id="groups-tbl">
+            <thead>
+              <tr><th>ID</th><th>Название</th><th>Очереди</th><th>Penalty</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- VDN / short numbers -->
+      <section class="panel vdn-panel" data-panel="vdn">
+        <div class="workflow-hint">
+          <strong>VDN</strong> (короткий номер/DID) — точка входа абонента. Привяжите номер к <strong>направлению (Skill Queue)</strong>
+          напрямую или через <strong>IVR с выбором языка</strong> (как VDN 2006 в CSP).
+        </div>
+        <div class="admin-toolbar">
+          <button class="btn primary" id="btn-vdn-add">+ Короткий номер</button>
+          <div class="spacer"></div>
+          <button class="btn" id="btn-vdn-export">Экспорт vdn_routes</button>
+          <label class="btn">Импорт<input type="file" id="btn-vdn-import" accept=".json" hidden /></label>
+        </div>
+        <div class="card skill-table-card">
+          <table class="t skill-table" id="vdn-tbl">
+            <thead>
+              <tr>
+                <th>Номер</th><th>Название</th><th>Тип</th><th>Назначение</th><th>Статус</th><th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="hint">Сохранение в Postgres: таблицы <code>vdn_routes</code>, <code>vdn_language_options</code>. Dialplan Asterisk — отдельная синхронизация.</p>
+      </section>
+
+      <!-- Subscribers blacklist / VIP -->
+      <section class="panel subscribers-panel" data-panel="subscribers">
+        <div class="workflow-hint">
+          <strong>ЧС</strong> — абонент не может дозвониться (бессрочно или на период; на все направления или только выбранные Skill Group / очереди).
+          <strong>VIP</strong> — без ожидания в общей очереди: сразу в VIP-направление с приоритетом в Asterisk.
+        </div>
+        <div class="admin-toolbar">
+          <button class="btn primary" id="btn-sub-add">+ Запись</button>
+          <select id="sub-filter-type" style="max-width:160px">
+            <option value="">Все типы</option>
+            <option value="blacklist">Чёрный список</option>
+            <option value="vip">VIP</option>
+          </select>
+          <input id="sub-filter-msisdn" placeholder="поиск MSISDN…" style="max-width:200px" />
+          <div class="spacer"></div>
+          <button class="btn" id="btn-sub-export">Экспорт subscribers_access</button>
+          <label class="btn">Импорт<input type="file" id="btn-sub-import" accept=".json" hidden /></label>
+        </div>
+        <div class="card skill-table-card">
+          <table class="t skill-table" id="sub-tbl">
+            <thead>
+              <tr>
+                <th>MSISDN</th><th>Тип</th><th>Срок</th><th>Охват</th><th>Направления</th><th>Причина</th><th>Статус</th><th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="hint">Postgres: <code>subscriber_access</code> (+ очереди/группы). AGI читает <code>subscribers_access.json</code>, обновляется при сохранении из БД.</p>
+      </section>
+
+      <!-- CRM connectors -->
+      <section class="panel crm-panel" data-panel="crm">
+        <div class="workflow-hint">
+          <strong>Конструктор CRM</strong> — карточка абонента в Agent UI через REST или SOAP (WSDL).
+          Укажите URL/WSDL, маппинг полей ответа → поля карточки. Тест — по MSISDN без сохранения внешней CRM.
+        </div>
+        <div class="admin-toolbar">
+          <button class="btn primary" id="btn-crm-add">+ Коннектор</button>
+          <div class="spacer"></div>
+          <button class="btn" id="btn-crm-export">Экспорт crm_connectors</button>
+        </div>
+        <div class="card skill-table-card">
+          <table class="t skill-table" id="crm-tbl">
+            <thead>
+              <tr>
+                <th>ID</th><th>Название</th><th>Тип</th><th>По умолчанию</th><th>Вкл.</th><th>Описание</th><th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="hint">Postgres: <code>crm_connectors</code>. Agent: <code>GET /api/subscribers/{msisdn}</code>.</p>
       </section>
 
       <!-- Roles -->
@@ -72,88 +193,328 @@
         </div>
       </section>
 
-      <!-- Groups -->
-      <section class="panel" data-panel="groups">
-        <div class="admin-toolbar">
-          <button class="btn primary" id="btn-group-add">+ Группа</button>
-          <div class="spacer"></div>
-          <button class="btn" id="btn-groups-export">Экспорт groups</button>
-          <label class="btn">Импорт groups<input type="file" id="btn-groups-import" accept=".json" hidden /></label>
-        </div>
-        <div class="card" style="overflow:auto">
-          <table class="t" id="groups-tbl">
-            <thead>
-              <tr><th>ID</th><th>Название</th><th>Роль</th><th>Очереди</th><th>Penalty</th><th></th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Priorities -->
-      <section class="panel" data-panel="priorities">
-        <p style="color:var(--fg-2);font-size:13px;margin:0">
-          Penalty в Asterisk <code>Queue()</code> / <code>AddQueueMember</code>: чем выше — тем ниже приоритет оператора в очереди.
-        </p>
-        <div class="card" style="overflow:auto">
-          <table class="t" id="prio-tbl">
-            <thead><tr><th>Оператор</th><th>Очередь</th><th>Penalty</th><th>Источник</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <button class="btn" id="btn-prio-save">Сохранить (демо localStorage)</button>
-      </section>
-
-      <!-- Queues -->
+      <!-- Queues catalog (read-only reference) -->
       <section class="panel" data-panel="queues">
-        <div class="card">
-          <table class="t" id="queues-tbl">
-            <thead><tr><th>Очередь</th><th>SLA (сек)</th><th>Wrap-up</th><th>Описание</th></tr></thead>
-            <tbody>
-              <tr><td>support</td><td>20</td><td>10</td><td>General support</td></tr>
-              <tr><td>sales</td><td>15</td><td>10</td><td>Sales</td></tr>
-              <tr><td>billing</td><td>30</td><td>15</td><td>Billing</td></tr>
-              <tr><td>vip</td><td>10</td><td>10</td><td>VIP customers</td></tr>
-              <tr><td>overflow</td><td>60</td><td>5</td><td>Overflow</td></tr>
-            </tbody>
+        <p style="color:var(--fg-2);font-size:13px;margin:0">
+          Справочник Skill Queue — id как в CSP, name — очередь Asterisk (<code>Queue()</code>).
+          Создание и правка — во вкладке <strong>Настройка скил групп</strong>.
+        </p>
+        <div class="card queues-catalog-card">
+          <table class="t" id="queues-catalog-tbl">
+            <thead><tr><th>ID</th><th>Skill Name</th><th>Очередь</th><th>Тип</th></tr></thead>
+            <tbody></tbody>
           </table>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- User edit modal -->
+  <!-- Agent edit modal (CSP Change Agent) -->
   <div class="modal-back" id="user-modal">
-    <div class="modal" style="width:480px">
-      <h3 style="margin:0" id="user-modal-title">Пользователь</h3>
-      <div class="form-grid" style="margin-top:12px">
-        <label>Логин</label><input id="um-login" />
-        <label>Пароль</label><input id="um-password" type="password" placeholder="оставьте пустым — не менять" />
+    <div class="modal agent-modal">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0" id="user-modal-title">Изменить агента</h3>
+        <button class="btn ghost icon" id="um-close">✕</button>
+      </div>
+      <div class="form-grid agent-form" style="margin-top:12px">
+        <label>Agent ID</label><input id="um-login" placeholder="логин / agent01" />
         <label>ФИО</label><input id="um-name" />
+        <label>Пароль</label><input id="um-password" type="password" placeholder="пусто — не менять" />
+        <label>Подтверждение</label><input id="um-password2" type="password" placeholder="повтор пароля" />
         <label>Роль</label>
         <select id="um-role">
-          <option value="agent">agent</option>
-          <option value="supervisor">supervisor</option>
-          <option value="qa">qa</option>
-          <option value="admin">admin</option>
-          <option value="auditor">auditor</option>
+          <option value="agent">Ordinary agent</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="qa">QA</option>
+          <option value="admin">Config admin</option>
+          <option value="auditor">Auditor</option>
         </select>
-        <label>SIP user</label><input id="um-sip" placeholder="1001 (для операторов)" />
+        <label>SIP user</label><input id="um-sip" placeholder="1001" />
         <label>SIP pass</label><input id="um-sippass" type="password" />
-        <label>Группы</label><input id="um-groups" placeholder="support_l1, billing" />
-        <label>Skill queues</label>
-        <label class="row" style="gap:8px;grid-column:2">
-          <input type="checkbox" id="um-pick-skills" checked />
-          <span>Разрешить панель «Select skill queues»</span>
-        </label>
-        <label>Skill ID</label>
-        <input id="um-skill-ids" placeholder="7, 9 — если панель выключена" />
         <label>Статус</label>
         <select id="um-status"><option value="active">active</option><option value="disabled">disabled</option></select>
       </div>
-      <div class="row" style="justify-content:flex-end;margin-top:14px">
-        <button class="btn" id="um-cancel">Отмена</button>
-        <button class="btn primary" id="um-save">Сохранить</button>
+
+      <div id="um-agent-skills" class="agent-skills-block">
+        <div class="skill-mode-row">
+          <span class="label">Skill Setting Mode</span>
+          <label class="row" style="gap:6px"><input type="radio" name="skill-mode" value="by_group" checked /> По группе навыков</label>
+          <label class="row" style="gap:6px"><input type="radio" name="skill-mode" value="by_skill" /> По навыку</label>
+        </div>
+
+        <div id="um-by-group">
+          <div class="row" style="justify-content:space-between;align-items:center;margin:8px 0 6px">
+            <span class="field-label" style="margin:0">Skill Group</span>
+            <div class="row" style="gap:6px">
+              <button type="button" class="btn ghost" id="um-groups-clear">Clear Select</button>
+              <button type="button" class="btn primary" id="um-groups-select">Select</button>
+            </div>
+          </div>
+          <div class="card" style="overflow:auto;padding:0">
+            <table class="t" id="um-agent-groups-tbl">
+              <thead>
+                <tr><th>Skill Group Name</th><th>Details</th><th></th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <label class="row pick-row" style="gap:8px;margin-top:8px">
+            <input type="checkbox" id="um-pick-skills" checked />
+            <span>Оператор сам выбирает skill-очереди при входе (Select skill queues)</span>
+          </label>
+        </div>
+
+        <div id="um-by-skill" hidden>
+          <div class="row" style="justify-content:space-between;align-items:center;margin:8px 0 6px">
+            <span class="field-label" style="margin:0">Назначенные навыки</span>
+            <div class="row" style="gap:6px">
+              <button type="button" class="btn ghost" id="um-skills-clear">Clear</button>
+              <button type="button" class="btn primary" id="um-skills-select">Select</button>
+            </div>
+          </div>
+          <div class="card" style="overflow:auto;padding:0">
+            <table class="t" id="um-skills-tbl">
+              <thead>
+                <tr><th>Skill Name</th><th>Agent Rating</th><th>Skill Rating</th><th>Penalty</th><th></th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="hint">Penalty в Asterisk: чем выше — тем ниже приоритет оператора в очереди.</p>
+        </div>
+      </div>
+
+      <div class="row modal-actions">
+        <button class="btn" id="um-cancel">Return</button>
+        <button class="btn primary" id="um-save">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skill queue editor -->
+  <div class="modal-back" id="queue-modal">
+    <div class="modal" style="width:440px">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0" id="queue-modal-title">Skill Queue</h3>
+        <button class="btn ghost icon" id="qm-close">✕</button>
+      </div>
+      <div class="form-grid agent-form" style="margin-top:12px">
+        <label>ID (CSP)</label><input id="qm-id" type="number" min="1" placeholder="38" />
+        <label>Название</label><input id="qm-name" placeholder="Francuzskaya gruppa" />
+        <label>Очередь Asterisk</label><input id="qm-queue" placeholder="francuzskaya" />
+        <label>Тип</label>
+        <select id="qm-type">
+          <option value="Query">Query</option>
+          <option value="consult">consult</option>
+        </select>
+      </div>
+      <p class="hint">Сначала создайте направление здесь, затем добавьте его в Skill Group (вкладка «Настройка скил групп»).</p>
+      <div class="row modal-actions">
+        <button class="btn" id="qm-cancel">Return</button>
+        <button class="btn primary" id="qm-save">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skill group editor (CSP Skill Group) -->
+  <div class="modal-back" id="group-modal">
+    <div class="modal agent-modal">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0" id="group-modal-title">Skill Group</h3>
+        <button class="btn ghost icon" id="gm-close">✕</button>
+      </div>
+      <div class="form-grid agent-form" style="margin-top:12px">
+        <label>ID</label><input id="gm-id" placeholder="common_group" />
+        <label>Название</label><input id="gm-name" />
+        <label>Описание</label><input id="gm-desc" />
+        <label>Default penalty</label><input id="gm-penalty" type="number" min="0" max="99" value="0" />
+      </div>
+      <div class="row" style="justify-content:space-between;align-items:center;margin:12px 0 6px">
+        <span class="field-label" style="margin:0">Направления вызовов (Skill Queue)</span>
+        <div class="row" style="gap:6px">
+          <button type="button" class="btn ghost" id="gm-queues-clear">Clear</button>
+          <button type="button" class="btn primary" id="gm-queues-select">Select</button>
+        </div>
+      </div>
+      <div class="card" style="overflow:auto;padding:0">
+        <table class="t" id="gm-queues-tbl">
+          <thead><tr><th>SN.</th><th>Skill Queue Name</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint">Skill Group объединяет несколько skill queue — как в CSP. Агенту назначается группа целиком.</p>
+      <div class="row modal-actions">
+        <button class="btn" id="gm-cancel">Return</button>
+        <button class="btn primary" id="gm-save">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skill queue list (CSP) -->
+  <div class="modal-back" id="skill-pick-modal">
+    <div class="modal" style="width:460px">
+      <h3 style="margin:0" id="skill-pick-title">Skill Queue List</h3>
+      <input id="skill-pick-filter" placeholder="фильтр…" style="width:100%;margin-top:10px" />
+      <div class="card skill-pick-list" id="skill-pick-list"></div>
+      <div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px">
+        <button class="btn" id="skill-pick-cancel">Cancel</button>
+        <button class="btn primary" id="skill-pick-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skill group picker for agent -->
+  <div class="modal-back" id="agent-group-pick-modal">
+    <div class="modal" style="width:480px">
+      <h3 style="margin:0">Skill Group List</h3>
+      <input id="agent-group-pick-filter" placeholder="фильтр…" style="width:100%;margin-top:10px" />
+      <div class="card skill-pick-list" id="agent-group-pick-list"></div>
+      <div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px">
+        <button class="btn" id="agent-group-pick-cancel">Cancel</button>
+        <button class="btn primary" id="agent-group-pick-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscriber ЧС / VIP editor -->
+  <div class="modal-back" id="sub-modal">
+    <div class="modal agent-modal">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0" id="sub-modal-title">Абонент</h3>
+        <button class="btn ghost icon" id="sm-close">✕</button>
+      </div>
+      <div class="form-grid agent-form" style="margin-top:12px">
+        <label>MSISDN</label><input id="sm-msisdn" placeholder="992901234567" />
+        <label>Тип</label>
+        <select id="sm-list-type">
+          <option value="blacklist">Чёрный список (ЧС)</option>
+          <option value="vip">VIP</option>
+        </select>
+        <label>Охват</label>
+        <select id="sm-scope">
+          <option value="all">Все направления / группы</option>
+          <option value="selected">Только выбранные</option>
+        </select>
+        <label>Срок действия</label>
+        <select id="sm-permanent">
+          <option value="1">Бессрочно</option>
+          <option value="0">Период (дата с — по)</option>
+        </select>
+        <label>Дата с</label><input id="sm-valid-from" type="date" />
+        <label>Дата по</label><input id="sm-valid-until" type="date" />
+        <label>Причина / комментарий</label><input id="sm-reason" placeholder="причина блокировки или VIP" />
+        <label>Статус</label>
+        <select id="sm-enabled"><option value="1">Активна</option><option value="0">Выключена</option></select>
+      </div>
+      <div id="sm-scope-block" hidden>
+        <div class="row" style="justify-content:space-between;align-items:center;margin:12px 0 6px">
+          <span class="field-label" style="margin:0">Skill Group (опционально)</span>
+        </div>
+        <div class="card sub-scope-card" id="sm-groups-list"></div>
+        <div class="row" style="justify-content:space-between;align-items:center;margin:12px 0 6px">
+          <span class="field-label" style="margin:0">Очереди Asterisk (Skill Queue)</span>
+        </div>
+        <div class="card sub-scope-card" id="sm-queues-list"></div>
+      </div>
+      <p class="hint" id="sm-type-hint">ЧС: при scope «все» — звонок отклоняется на входе. VIP: при scope «все» — сразу в VIP-очередь без IVR-ожидания.</p>
+      <div class="row modal-actions">
+        <button class="btn" id="sm-cancel">Return</button>
+        <button class="btn primary" id="sm-save">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VDN editor -->
+  <div class="modal-back" id="vdn-modal">
+    <div class="modal agent-modal">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0" id="vdn-modal-title">VDN</h3>
+        <button class="btn ghost icon" id="vm-close">✕</button>
+      </div>
+      <div class="form-grid agent-form" style="margin-top:12px">
+        <label>Короткий номер</label><input id="vm-number" placeholder="2006" />
+        <label>Название</label><input id="vm-name" placeholder="Главный VDN" />
+        <label>Описание</label><input id="vm-desc" />
+        <label>Тип маршрута</label>
+        <select id="vm-route-type">
+          <option value="queue_direct">Сразу в очередь (Skill Queue)</option>
+          <option value="ivr_language">IVR — выбор языка → Skill Queue</option>
+        </select>
+        <label>Статус</label>
+        <select id="vm-enabled"><option value="1">Включён</option><option value="0">Выключен</option></select>
+      </div>
+
+      <div id="vm-queue-block">
+        <label class="field-label">Направление (Skill Queue)</label>
+        <select id="vm-skill-queue" style="width:100%"></select>
+      </div>
+
+      <div id="vm-ivr-block" hidden>
+        <div class="row" style="justify-content:space-between;align-items:center;margin:12px 0 6px">
+          <span class="field-label" style="margin:0">Клавиши IVR → язык → Skill Queue</span>
+          <button type="button" class="btn ghost" id="vm-lang-add">+ Клавиша</button>
+        </div>
+        <div class="card" style="overflow:auto;padding:0">
+          <table class="t" id="vm-lang-tbl">
+            <thead><tr><th>Клав.</th><th>Язык</th><th>Подпись</th><th>Skill Queue</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="row modal-actions">
+        <button class="btn" id="vm-cancel">Return</button>
+        <button class="btn primary" id="vm-save">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRM connector editor -->
+  <div class="modal-back" id="crm-modal">
+    <div class="modal agent-modal" style="max-width:720px">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0" id="crm-modal-title">CRM коннектор</h3>
+        <button class="btn ghost icon" id="crm-close">✕</button>
+      </div>
+      <div class="form-grid agent-form" style="margin-top:12px">
+        <label>Название</label><input id="crm-name" />
+        <label>Тип</label>
+        <select id="crm-type">
+          <option value="rest">REST (JSON)</option>
+          <option value="soap">SOAP (WSDL)</option>
+        </select>
+        <label>Включён</label><input id="crm-enabled" type="checkbox" />
+        <label>По умолчанию</label><input id="crm-default" type="checkbox" />
+        <label>Описание</label><input id="crm-desc" />
+      </div>
+      <div id="crm-rest-block">
+        <label class="field-label">REST URL (шаблон {{msisdn}})</label>
+        <input id="crm-url" style="width:100%" placeholder="https://crm/api/subscribers/{{msisdn}}" />
+        <label class="field-label">HTTP method</label>
+        <select id="crm-method"><option>GET</option><option>POST</option></select>
+      </div>
+      <div id="crm-soap-block" hidden>
+        <label class="field-label">WSDL URL</label>
+        <input id="crm-wsdl" style="width:100%" />
+        <div class="row" style="gap:8px;margin:6px 0">
+          <button type="button" class="btn" id="crm-wsdl-parse">Разобрать WSDL</button>
+          <select id="crm-operation" style="flex:1"></select>
+        </div>
+        <label class="field-label">Параметры SOAP (JSON, {{msisdn}})</label>
+        <textarea id="crm-params" rows="3" style="width:100%">{"msisdn": "{{msisdn}}"}</textarea>
+      </div>
+      <label class="field-label">Конфиг JSON (дополнительно: headers, auth, response_root)</label>
+      <textarea id="crm-config-json" rows="4" style="width:100%;font-family:monospace;font-size:12px"></textarea>
+      <label class="field-label">Маппинг полей (JSON: поле карточки → путь в ответе CRM)</label>
+      <textarea id="crm-mapping-json" rows="6" style="width:100%;font-family:monospace;font-size:12px"></textarea>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <input id="crm-test-msisdn" placeholder="MSISDN для теста" style="flex:1" />
+        <button type="button" class="btn" id="crm-test-btn">Тест запроса</button>
+      </div>
+      <pre id="crm-test-result" style="max-height:120px;overflow:auto;font-size:11px;background:var(--bg-2);padding:8px;border-radius:6px"></pre>
+      <div class="row modal-actions">
+        <button class="btn" id="crm-cancel">Отмена</button>
+        <button class="btn primary" id="crm-save">Сохранить</button>
       </div>
     </div>
   </div>

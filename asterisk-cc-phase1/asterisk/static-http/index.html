@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Asterisk WSS — кол-центр</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+    .ok { color: #0a0; }
+  </style>
+</head>
+<body>
+  <h1>Asterisk TLS / WebRTC</h1>
+  <p class="ok">Сертификат принят — можно подключать Agent по WSS.</p>
+  <p>Страница <code>/</code> пустая — это нормально. Для SIP.js:</p>
+  <p><code id="wss">wss://HOST:8089/ws</code></p>
+  <p><a id="agent" href="#">Открыть Agent workspace</a></p>
+  <script>
+    const host = location.hostname;
+    document.getElementById("wss").textContent = "wss://" + host + ":8089/ws";
+    document.getElementById("agent").href = "http://" + host + ":9000/agent/";
+  </script>
+</body>
+</html>

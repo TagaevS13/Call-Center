@@ -28,3 +28,15 @@ venv/
 *.tar
 *.tar.gz
 *.zip
+
+# Asterisk runtime-generated configs (созд. docker-entrypoint.sh / cc_config_sync.py).
+# Заглушки создаются entrypoint при старте, рабочее содержимое — при синхронизации из БД.
+asterisk-cc-phase1/asterisk/etc/rtp_ice_extra.conf
+asterisk-cc-phase1/asterisk/etc/pjsip_agents.conf
+asterisk-cc-phase1/asterisk/etc/pjsip_agent_webrtc.conf
+asterisk-cc-phase1/asterisk/etc/queues_generated.conf
+asterisk-cc-phase1/asterisk/etc/vdn_generated.conf
+asterisk-cc-phase1/asterisk/etc/.reload_requested
+
+# TLS-ключи Asterisk (генерируются entrypoint, не храним в репозитории)
+asterisk-cc-phase1/asterisk/etc/keys/

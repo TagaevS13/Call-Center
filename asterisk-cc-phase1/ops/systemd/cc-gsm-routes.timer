@@ -1,0 +1,10 @@
+[Unit]
+Description=Re-apply GSM routes if lost (10.1.5.0/24 + /29 + /27)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

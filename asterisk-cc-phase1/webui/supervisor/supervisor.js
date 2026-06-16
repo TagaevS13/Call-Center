@@ -1,5 +1,6 @@
 import { $, $$, fmtDuration, fmtTime, toast, el } from "../shared/common.js";
 import { requireSession, clearSession, hasPermission } from "../shared/auth.js";
+import { apiGet } from "../shared/api.js";
 
 const ccSession = requireSession({
   roles: ["supervisor", "qa", "auditor", "admin"],
@@ -9,86 +10,71 @@ if (!ccSession) throw new Error("no session");
 
 const state = {
   session: ccSession,
-  queues: [
-    { name:"support",  waiting:0, longest:0, offered:120, handled:115, abandoned:5, sla:0.92, ops:8,
-      strategy:"leastrecent", sla_seconds:20, wrapup:10 },
-    { name:"sales",    waiting:0, longest:0, offered:60,  handled:58,  abandoned:2, sla:0.95, ops:5,
-      strategy:"ringall",     sla_seconds:15, wrapup:10 },
-    { name:"billing",  waiting:0, longest:0, offered:80,  handled:72,  abandoned:8, sla:0.88, ops:6,
-      strategy:"fewestcalls", sla_seconds:30, wrapup:15 },
-    { name:"vip",      waiting:0, longest:0, offered:30,  handled:30,  abandoned:0, sla:0.99, ops:3,
-      strategy:"ringall",     sla_seconds:10, wrapup:10 },
-    { name:"overflow", waiting:0, longest:0, offered:10,  handled:8,   abandoned:2, sla:0.80, ops:2,
-      strategy:"leastrecent", sla_seconds:60, wrapup:5 },
-  ],
+  queues: [],
   agents: [],
   recent: [],
   audit: [],
   recordings: [],
 };
 
-const NAMES = [
-  "Anvar M.","Sitora K.","Farrukh A.","Daler N.","Parvina S.","Mavzuna R.",
-  "Jamshed I.","Nasrullo H.","Aziz B.","Manizha T.","Shahnoza Y.","Rustam Q.",
-];
-
-function genAgents(n=24) {
-  const agents = [];
-  for (let i=0;i<n;i++) {
-    const sip = String(1001+i);
-    agents.push({
-      id: i+1,
-      sip,
-      name: NAMES[i % NAMES.length] + " " + sip,
-      state: "READY",
-      since: Date.now() - Math.floor(Math.random()*900*1000),
-      queues: ["support","sales","billing","vip"].filter((_, j)=> (i+j)%2===0).slice(0,2),
-      call: null,
-    });
-  }
-  return agents;
+function parseSince(iso) {
+  if (!iso) return Date.now();
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? Date.now() : t;
 }
 
-function seedRecordings() {
-  const queues = ["support","sales","billing","vip"];
-  const now = Date.now();
-  for (let i=0;i<120;i++) {
-    const t = new Date(now - i * (60000 + Math.random()*240000));
-    state.recordings.push({
-      uniqueid: `163${Math.floor(1000000 + Math.random()*8999999)}.${i}`,
-      time: t,
-      queue: queues[Math.floor(Math.random()*queues.length)],
-      caller: "9" + Math.floor(10000000 + Math.random()*89999999),
-      agent: String(1001 + Math.floor(Math.random()*24)),
-      dur: Math.floor(20 + Math.random()*400),
-      sha: Array.from({length:64}, () => "0123456789abcdef"[Math.floor(Math.random()*16)]).join(""),
-    });
+async function refreshOpsData() {
+  try {
+    const [qRes, aRes, auRes, recRes] = await Promise.all([
+      apiGet("/ops/queues/realtime"),
+      apiGet("/ops/agents"),
+      apiGet("/ops/audit?limit=80"),
+      apiGet("/ops/recordings"),
+    ]);
+    state.queues = (qRes.queues || []).map(q => ({
+      ...q,
+      strategy: "—",
+      wrapup: 10,
+    }));
+    state.agents = (aRes.agents || []).map(a => ({
+      ...a,
+      since: parseSince(a.since),
+    }));
+    state.audit = (auRes.audit || []).map(x => ({
+      ...x,
+      date: x.date ? new Date(x.date) : new Date(),
+    }));
+    state.recordings = (recRes.recordings || []).map(r => ({
+      ...r,
+      time: r.time ? new Date(r.time) : new Date(),
+    }));
+    state.recent = state.recordings.slice(0, 30).map(r => ({
+      time: r.time instanceof Date ? r.time.toLocaleTimeString() : fmtTime(),
+      queue: r.queue || "—",
+      caller: r.caller || "",
+      agent: r.agent || "—",
+      dur: r.dur || 0,
+      outcome: (r.disposition || "answered").toLowerCase(),
+    }));
+  } catch (e) {
+    console.warn("ops api", e);
   }
-}
-
-function seedAudit(n=40) {
-  const actions = ["listen","whisper","barge","pause","unpause","remove","recording_view","login","logout"];
-  const actors = ["supervisor","qa1","qa2","admin","auditor"];
-  const now = Date.now();
-  for (let i=0;i<n;i++) {
-    const t = new Date(now - i * (30000 + Math.random()*240000));
-    state.audit.push({
-      time: t.toLocaleTimeString(),
-      date: t,
-      actor: actors[Math.floor(Math.random()*actors.length)],
-      role: "supervisor",
-      action: actions[Math.floor(Math.random()*actions.length)],
-      target: String(1001 + Math.floor(Math.random()*24)),
-      ip: `10.0.0.${10 + Math.floor(Math.random()*200)}`,
-      payload: {note: "demo"},
-    });
-  }
+  renderKpis();
+  renderQueuesLive();
+  const active = location.hash.replace("#", "") || "dashboard";
+  if (active === "dashboard") { renderAgents(); renderRecent(); }
+  else if (active === "queues-live") renderQueuesLive();
+  else if (active === "agents") renderAgentsTbl();
+  else if (active === "queues") renderQueueCards();
+  else if (active === "recordings") renderRecordings();
+  else if (active === "audit") renderAuditTbl();
 }
 
 // ---- Routing ----
 function showSection(name) {
   $$(".view").forEach(v => v.toggleAttribute("hidden", v.dataset.view !== name));
   $$(".nav-item[data-section]").forEach(n => n.classList.toggle("active", n.dataset.section === name));
+  if (name === "queues-live") renderQueuesLive();
   if (name === "agents")     renderAgentsTbl();
   if (name === "queues")     renderQueueCards();
   if (name === "recordings") renderRecordings();
@@ -112,21 +98,70 @@ function renderKpis() {
   $("#kpi-agents").textContent = ready;
   $("#kpi-wait").textContent = fmtDuration(longest);
   $("#kpi-sla").textContent = Math.round(sla*100) + "%";
+  renderWallMetrics();
 }
 
-function renderQueues() {
-  const tb = $("#q-tbl tbody"); tb.innerHTML = "";
+function renderWallMetrics() {
+  const host = $("#wall-grid");
+  if (!host) return;
+  const waiting = state.queues.reduce((a, q) => a + q.waiting, 0);
+  const offered = state.queues.reduce((a, q) => a + q.offered, 0);
+  const handled = state.queues.reduce((a, q) => a + q.handled, 0);
+  const abandoned = state.queues.reduce((a, q) => a + q.abandoned, 0);
+  const onBreak = state.agents.filter(a => a.state === "PAUSE").length;
+  const online = state.agents.filter(a => a.state !== "OFFLINE").length;
+  const asa = Math.round(state.queues.reduce((a, q) => a + q.longest, 0) / Math.max(1, state.queues.length));
+  const aht = 185 + Math.floor(Math.random() * 40);
+  const ivrAuto = Math.round(handled * 0.35);
+  const cells = [
+    { lbl: "ASA (сред. ожидание)", val: fmtDuration(asa), cls: asa > 60 ? "warn" : "ok" },
+    { lbl: "AHT (сред. разговор)", val: fmtDuration(aht), cls: "" },
+    { lbl: "В очереди ONLINE", val: waiting, cls: waiting >= 5 ? "err" : waiting >= 2 ? "warn" : "ok" },
+    { lbl: "Обслужено операторами", val: handled, cls: "ok" },
+    { lbl: "Обслужено IVR (auto)", val: ivrAuto, cls: "" },
+    { lbl: "Звонков за 24ч", val: offered, cls: "" },
+    { lbl: "За месяц (оценка)", val: Math.round(offered * 28), cls: "" },
+    { lbl: "Операторов online", val: online, cls: "ok" },
+    { lbl: "На перерыве", val: onBreak, cls: onBreak > 5 ? "warn" : "" },
+    { lbl: "Подключено SIP", val: online, cls: "" },
+    { lbl: "Необсл. abandon", val: abandoned, cls: abandoned > 10 ? "err" : "" },
+    { lbl: "SLA avg", val: Math.round(state.queues.reduce((a,q)=>a+q.sla,0)/state.queues.length*100) + "%", cls: "ok" },
+  ];
+  host.innerHTML = cells.map(c => `
+    <div class="wall-cell ${c.cls}">
+      <div class="lbl">${c.lbl}</div>
+      <div class="val">${c.val}</div>
+    </div>`).join("");
+}
+
+function renderQueuesLive() {
+  const tb = $("#queues-live-tbl tbody");
+  const compact = $("#queues-live-compact tbody");
+  if (!tb || !compact) return;
+  tb.innerHTML = "";
+  compact.innerHTML = "";
   for (const q of state.queues) {
     const wcls = q.waiting >= 5 ? "err" : q.waiting >= 2 ? "warn" : "ok";
+    const slaPct = Math.round((q.sla || 0) * 100);
+    const slaCls = slaPct >= 90 ? "ok" : slaPct >= 80 ? "warn" : "err";
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><b>${q.name}</b></td>
       <td><span class="tag ${wcls}">${q.waiting}</span></td>
       <td>${fmtDuration(q.longest)}</td>
-      <td>${q.ops}</td>
-      <td>${q.offered} / ${q.handled} / ${q.abandoned}</td>
-      <td>${Math.round((q.sla||0)*100)}%</td>`;
+      <td>${q.ops ?? 0}</td>
+      <td>${q.offered ?? 0}</td>
+      <td>${q.handled ?? 0}</td>
+      <td>${q.abandoned ?? 0}</td>
+      <td><span class="tag ${slaCls}">${slaPct}%</span></td>`;
     tb.appendChild(tr);
+    const trc = document.createElement("tr");
+    trc.innerHTML = `
+      <td>${q.name}</td>
+      <td><span class="tag ${wcls}">${q.waiting}</span></td>
+      <td>${fmtDuration(q.longest)}</td>
+      <td><span class="tag ${slaCls}">${slaPct}%</span></td>`;
+    compact.appendChild(trc);
   }
 }
 
@@ -373,7 +408,7 @@ function renderAuditTbl() {
     if (action && a.action !== action) continue;
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${a.date.toLocaleString()}</td>
+      <td>${(a.date instanceof Date ? a.date : new Date(a.date)).toLocaleString()}</td>
       <td>${a.actor}</td>
       <td>${a.role}</td>
       <td><span class="tag">${a.action}</span></td>
@@ -388,47 +423,10 @@ $("#au-apply").addEventListener("click", renderAuditTbl);
 // ============================================================
 // Boot / simulators
 // ============================================================
-state.agents = genAgents();
-seedRecordings();
-seedAudit();
-renderQueues(); renderAgents(); renderRecent(); renderKpis();
-
 setInterval(() => { $("#ts-now").textContent = fmtTime(); }, 1000);
 
-setInterval(() => {
-  for (const q of state.queues) {
-    const delta = (Math.random() < 0.4) ? 1 : -1;
-    q.waiting = Math.max(0, q.waiting + delta);
-    q.longest = q.waiting > 0 ? Math.min(240, q.longest + 2 + Math.floor(Math.random()*3)) : 0;
-    if (Math.random() < 0.3) q.offered += 1;
-    if (Math.random() < 0.25) q.handled += 1;
-    if (Math.random() < 0.05) q.abandoned += 1;
-    q.sla = Math.max(0.6, Math.min(1, q.sla + (Math.random() - 0.5) * 0.02));
-  }
-  const a = state.agents[Math.floor(Math.random()*state.agents.length)];
-  const nextStates = a.state === "READY" ? ["BUSY","PAUSE","READY","READY"] :
-                     a.state === "BUSY"  ? ["AFTERCALL","BUSY","BUSY"] :
-                     a.state === "AFTERCALL" ? ["READY","READY","AFTERCALL"] :
-                     ["READY"];
-  const nx = nextStates[Math.floor(Math.random()*nextStates.length)];
-  if (nx !== a.state) { a.state = nx; a.since = Date.now(); }
-  if (Math.random() < 0.5) {
-    state.recent.unshift({
-      time: fmtTime(),
-      queue: state.queues[Math.floor(Math.random()*state.queues.length)].name,
-      caller: "9" + Math.floor(10000000 + Math.random()*89999999),
-      agent: a.sip,
-      dur: Math.floor(20 + Math.random()*300),
-      outcome: Math.random() < 0.9 ? "answered" : "missed",
-    });
-  }
-  renderKpis(); renderQueues();
-  // re-render active section if its data changed
-  const active = location.hash.replace("#", "") || "dashboard";
-  if (active === "dashboard") renderAgents();
-  else if (active === "agents") renderAgentsTbl();
-  else if (active === "queues") renderQueueCards();
-}, 2500);
+refreshOpsData();
+setInterval(refreshOpsData, 5000);
 
 $("#who").textContent = `${ccSession.fullName} · ${ccSession.roleLabel}`;
 if (ccSession.role === "admin") {

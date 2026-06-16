@@ -12,8 +12,9 @@
     <aside class="sidebar">
       <div class="brand"><span class="logo"></span><div>Supervisor</div></div>
       <div class="nav-item active" data-section="dashboard"><span class="ic">●</span>Дашборд</div>
+      <div class="nav-item"         data-section="queues-live"><span class="ic">●</span>Очереди (live)</div>
       <div class="nav-item"         data-section="agents"><span class="ic">●</span>Операторы</div>
-      <div class="nav-item"         data-section="queues"><span class="ic">●</span>Очереди</div>
+      <div class="nav-item"         data-section="queues"><span class="ic">●</span>Очереди (карточки)</div>
       <div class="nav-item"         data-section="recordings"><span class="ic">●</span>Записи разговоров</div>
       <div class="nav-item"         data-section="sla"><span class="ic">●</span>SLA / Отчёты</div>
       <div class="nav-item"         data-section="audit"><span class="ic">●</span>Audit</div>
@@ -50,24 +51,24 @@
           <div class="card"><h3>SLA (1h)</h3><div class="kpi ok"><div class="n" id="kpi-sla">0%</div><div class="u">средн.</div></div></div>
         </div>
 
-        <div class="grid-2" style="margin-top:14px">
-          <section class="card">
-            <h3>Очереди (live)</h3>
-            <table class="t" id="q-tbl">
-              <thead><tr><th>Очередь</th><th>В ожид.</th><th>Longest</th><th>Operators</th><th>Offered / Handled / Abnd</th><th>SLA</th></tr></thead>
+        <section class="card wall-online" style="margin-top:14px">
+          <div class="row">
+            <h3 style="margin:0">Мониторинг ONLINE</h3>
+            <div class="spacer"></div>
+            <span class="tag ok">Postgres / API</span>
+          </div>
+          <div class="wall-grid" id="wall-grid"></div>
+        </section>
+
+        <section class="card" style="margin-top:14px">
+          <div class="row"><h3 style="margin:0">Последние вызовы</h3><div class="spacer"></div><span class="tag">stream</span></div>
+          <div class="scroll">
+            <table class="t" id="recent-tbl">
+              <thead><tr><th>Время</th><th>Очередь</th><th>Абонент</th><th>Оператор</th><th>Длит.</th><th>Итог</th></tr></thead>
               <tbody></tbody>
             </table>
-          </section>
-          <section class="card">
-            <div class="row"><h3 style="margin:0">Последние вызовы</h3><div class="spacer"></div><span class="tag">stream</span></div>
-            <div class="scroll">
-              <table class="t" id="recent-tbl">
-                <thead><tr><th>Время</th><th>Очередь</th><th>Абонент</th><th>Оператор</th><th>Длит.</th><th>Итог</th></tr></thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-        </div>
+          </div>
+        </section>
 
         <section class="card" style="margin-top:14px">
           <div class="row"><h3 style="margin:0">Операторы (быстрый просмотр)</h3><div class="spacer"></div>
@@ -75,6 +76,46 @@
           </div>
           <div class="agents-grid" id="agents-grid"></div>
         </section>
+      </section>
+
+      <!-- ===== Section: Очереди (live) ===== -->
+      <section class="view" data-view="queues-live" hidden>
+        <div class="card">
+          <div class="row wrap" style="gap:8px">
+            <h3 style="margin:0">Очереди (live)</h3>
+            <div class="spacer"></div>
+            <span class="tag ok">/api/ops/queues/realtime · обновление 5 с</span>
+          </div>
+          <p style="color:var(--fg-2);font-size:12px;margin:8px 0 0">
+            Ожидание и SLA по skill-очередям из Postgres (<code>v_queue_realtime</code>, <code>queue_log</code>).
+          </p>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="scroll">
+            <table class="t" id="queues-live-tbl">
+              <thead>
+                <tr>
+                  <th>Очередь</th>
+                  <th>В ожид.</th>
+                  <th>Longest</th>
+                  <th>Operators</th>
+                  <th>Offered</th>
+                  <th>Handled</th>
+                  <th>Abandoned</th>
+                  <th>SLA</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h3 style="margin-top:0">Компактный вид</h3>
+          <table class="t compact-queues" id="queues-live-compact">
+            <thead><tr><th>Q</th><th>wait</th><th>long</th><th>SLA</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </section>
 
       <!-- ===== Section: Операторы ===== -->

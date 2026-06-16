@@ -1,18 +1,19 @@
 CREATE TABLE IF NOT EXISTS queues (
-    name            VARCHAR(80) PRIMARY KEY,
+    id              INT PRIMARY KEY,
+    name            VARCHAR(80) UNIQUE NOT NULL,
     description     TEXT,
     sla_seconds     INT NOT NULL DEFAULT 20,
     wrapup_seconds  INT NOT NULL DEFAULT 10,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-INSERT INTO queues (name, description, sla_seconds) VALUES
-  ('support','General support', 20),
-  ('sales',  'Sales',           15),
-  ('billing','Billing',         30),
-  ('vip',    'VIP customers',   10),
-  ('overflow','Overflow',       60)
-ON CONFLICT (name) DO NOTHING;
+INSERT INTO queues (id, name, description, sla_seconds) VALUES
+  (901,'support','General support', 20),
+  (902,'sales',  'Sales',           15),
+  (903,'billing','Billing',         30),
+  ( 20,'vip',    'VIP customers',   10),
+  (904,'overflow','Overflow',       60)
+ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS agents (
     id            BIGSERIAL PRIMARY KEY,

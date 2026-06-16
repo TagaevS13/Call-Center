@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "connectors": [
+    {
+      "name": "Huawei Boss4 BSS",
+      "connector_type": "soap",
+      "enabled": true,
+      "is_default": true,
+      "description": "Boss4 processBusi operationID 10017 — карточка абонента",
+      "config": {
+        "wsdl_url": "http://172.16.2.62:80/axis2/services/Boss4UnifiedInterfaceService?wsdl",
+        "service_url": "http://172.16.2.62:80/axis2/services/Boss4UnifiedInterfaceService",
+        "soap_style": "boss4",
+        "operation_id": "10017",
+        "operation": "processBusi",
+        "timeout": 30,
+        "auth": { "type": "none" },
+        "uvs": {
+          "enabled": true,
+          "service_url": "http://172.16.1.63:7782/services/UVSInterface_Extend",
+          "wsdl_url": "http://172.16.1.63:7782/services/UVSInterface_Extend?wsdl",
+          "user_id": "root",
+          "password": "root",
+          "sequence_id": "109678625"
+        }
+      },
+      "field_mapping": {
+        "msisdn": "MDN",
+        "tariff": "RatePlanName",
+        "pin1": "PIN1",
+        "pin2": "PIN2",
+        "puk1": "PUK1",
+        "puk2": "PUK2",
+        "imsi": "IMSI",
+        "icc": "ICCID",
+        "balance": "Balance",
+        "core_balance": "CoreBalance",
+        "category": "RatingCategory",
+        "customer_code": "SubID",
+        "lang": "SubLanguage",
+        "segment": "CustSegment"
+      }
+    }
+  ]
+}

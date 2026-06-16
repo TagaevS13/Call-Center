@@ -40,6 +40,7 @@ python webui/serve.py 8765
 |---|---|
 | Регистрация WebRTC, исходящие/входящие | SIP.js поверх `wss://…:8089/ws` (Asterisk `transport-wss`) |
 | Карточка абонента (MSISDN/сегмент/тариф/баланс/VIP) | AGI/ARI `lookup_subscriber` в IVR пишет в SIP-заголовок `X-Profile` (JSON) перед `Queue()` |
+| ЧС / VIP, агенты, группы, VDN (админка) | REST `/api/admin/*` → Postgres; AGI читает `subscribers_access.json` (синхронизируется при сохранении ЧС/VIP) |
 | Имя очереди в карточке вызова | SIP-заголовок `X-Queue` |
 | Очереди live (`waiting`, `longest`, `sla`) | REST-эндпоинт приложения над `mv_queue_calls_5m` и `v_queue_realtime` (Phase 1) или AMI `QueueStatus` |
 | История звонков оператора | SQL по `cdr` + `recordings` (фильтр по `agents.sip_user`) |

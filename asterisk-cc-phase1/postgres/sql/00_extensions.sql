@@ -6,7 +6,8 @@ CREATE ROLE asterisk LOGIN PASSWORD 'changeme';
 CREATE ROLE app      LOGIN PASSWORD 'changeme';
 CREATE ROLE report   LOGIN PASSWORD 'changeme';
 
-CREATE DATABASE asterisk_cc OWNER asterisk;
+SELECT 'CREATE DATABASE asterisk_cc OWNER asterisk'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'asterisk_cc')\gexec
 \connect asterisk_cc
 
 GRANT CONNECT ON DATABASE asterisk_cc TO app, report;

@@ -71,7 +71,8 @@
   text-align: center;
   margin-bottom: 8px;
 }
-.csp-callinfo .ci-title.busy      { color: var(--acc);  border-color: var(--acc); }
+.csp-callinfo .ci-title.busy,
+.csp-callinfo .ci-title.talking   { color: var(--acc);  border-color: var(--acc); }
 .csp-callinfo .ci-title.ringing   { color: var(--warn); border-color: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
 .csp-callinfo .ci-title.arrange   { color: var(--warn); border-color: var(--warn); }
 
@@ -170,6 +171,7 @@
   max-height: 60vh;
   padding: 4px;
 }
+.svc-items .item-row .item-body { cursor: pointer; }
 .svc-items .item-row {
   display: grid;
   grid-template-columns: 28px 1fr;
@@ -183,8 +185,91 @@
 .svc-items .item-row:hover { background: var(--bg-2); }
 .svc-items .item-row .code { font-family: var(--mono); color: var(--fg-2); font-size: 11px; margin-left: 6px; }
 .svc-items .item-row .name { text-decoration: underline; text-decoration-color: var(--bg-3); }
+.svc-items .item-row.open-detail { background: var(--bg-3); outline: 1px solid var(--acc); }
+.svc-foot-hint { margin: 8px 0 0; font-size: 11px; color: var(--fg-2); }
+
+/* ===== Handle / TT card (CSP screen 2) ===== */
+#tt-modal { z-index: 60; }
+.tt-modal {
+  width: min(1100px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tt-head { border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.tt-type-row {
+  font-size: 12px;
+  color: var(--fg-1);
+  padding: 6px 8px;
+  background: var(--bg-2);
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+.tt-type-label { color: var(--fg-2); margin-right: 6px; }
+.tt-type-path { color: var(--acc); }
+.tt-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 800px) {
+  .tt-form-grid { grid-template-columns: 1fr; }
+}
+.tt-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+}
+.tt-section-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--fg-0);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+.tt-section .field.tt-req > span::after { content: " *"; color: var(--err); }
+.tt-section textarea { min-height: 140px; resize: vertical; }
+.tt-actions { gap: 6px; padding: 4px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.tt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.tt-tab {
+  background: transparent;
+  border: none;
+  color: var(--fg-2);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  border-bottom: 2px solid transparent;
+}
+.tt-tab:hover { color: var(--fg-0); }
+.tt-tab.active { color: var(--fg-0); border-bottom-color: var(--acc); }
+.tt-tab-body { min-height: 120px; }
+.tt-task-tbl { font-size: 12px; }
+.tt-subcode { margin: 0; font-size: 12px; color: var(--warn); font-family: var(--mono); }
+.tt-hint { margin: 6px 0 0; font-size: 11px; color: var(--fg-2); }
+.tt-log-panel { margin-top: 10px; }
+.tt-log-text {
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow: auto;
+  color: var(--fg-1);
+}
+.tt-empty.hidden, .tt-total.hidden { display: none; }
 
 /* ===== Skill queue modal ===== */
+#skills-modal .modal { max-height: min(85vh, 640px); overflow: auto; }
 #skills-tbl tbody tr { cursor: pointer; }
 #skills-tbl input[type=checkbox] { transform: scale(1.1); }
 

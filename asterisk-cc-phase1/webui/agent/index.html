@@ -18,16 +18,19 @@
           <input id="cfg-user" readonly placeholder="1001" />
           <span style="font-size:11px;color:var(--fg-2)">Назначен админом — это не логин</span>
         </label>
-        <label class="field"><span>WSS Asterisk</span>
-          <input id="cfg-wss" placeholder="wss://cc.example.local:8089/ws" />
+        <label class="field"><span>WebSocket SIP (ws или wss)</span>
+          <input id="cfg-wss" placeholder="ws://172.16.6.183:8088/ws" />
+          <span style="font-size:11px;color:var(--fg-2)">UI по HTTP → ws://…:8088/ws; по HTTPS → wss://…:8089/ws</span>
         </label>
         <label class="field"><span>SIP домен</span>
-          <input id="cfg-domain" placeholder="cc.example.local" />
+          <input id="cfg-domain" placeholder="172.16.6.183" />
         </label>
-        <label class="field row" style="flex-direction:row; align-items:center; gap:8px;">
-          <input id="cfg-demo" type="checkbox" checked />
-          <span>Демо-режим (без подключения к Asterisk)</span>
-        </label>
+        <p id="sip-cert-hint" style="font-size:11px;color:var(--fg-2);margin:0;line-height:1.4"></p>
+        <p style="font-size:11px;color:var(--fg-2);margin:8px 0 0;line-height:1.4">
+          После «Продолжить» браузер спросит про <strong>уведомления</strong> и <strong>микрофон</strong>.
+          Голос абонента — кнопка <strong>Answer</strong> (🔊 «Звук» — если autoplay заблокирован).
+          <strong>Edge:</strong> примите сертификаты на :9443 и :8089 (ссылки выше).
+        </p>
         <div class="row" style="justify-content:flex-end;">
           <button class="btn" id="btn-sip-cancel">Отмена</button>
           <button class="btn primary" id="btn-sip-ok">Продолжить</button>
@@ -39,23 +42,23 @@
   <!-- Select skill queues modal (CSP-style after login) -->
   <div class="modal-back" id="skills-modal">
     <div class="modal" style="width: 460px">
-      <div class="row"><h3 style="margin:0">Select skill queues</h3>
+      <div class="row"><h3 style="margin:0">Выберите skill-очереди</h3>
         <div class="spacer"></div>
         <button class="btn ghost icon" id="skills-close">✕</button></div>
       <div style="color: var(--fg-2); font-size:12px; margin: 6px 0 8px">
-        Оператор логинится только в выбранные очереди. В Asterisk это AddQueueMember для каждой.
+        Тёмный фон блокирует экран, пока не нажмёте OK. Выберите очереди (как в Huawei CSP). Esc или «Отмена» — закрыть без смены.
       </div>
       <div class="row" style="margin-bottom:6px">
-        <label class="row" style="gap:6px"><input type="checkbox" id="skills-all" /> <span>Select all</span></label>
+        <label class="row" style="gap:6px"><input type="checkbox" id="skills-all" /> <span>Выбрать все</span></label>
         <div class="spacer"></div>
         <input id="skills-search" placeholder="фильтр…" style="width:140px" />
       </div>
       <table class="t" id="skills-tbl">
-        <thead><tr><th style="width:32px"></th><th>Skill ID</th><th>Skill name</th></tr></thead>
+        <thead><tr><th style="width:32px"></th><th>ID</th><th>Название очереди</th></tr></thead>
         <tbody></tbody>
       </table>
       <div class="row" style="justify-content:flex-end; margin-top:10px">
-        <button class="btn"          id="skills-cancel">Cancel</button>
+        <button class="btn"          id="skills-cancel">Отмена</button>
         <button class="btn primary"  id="skills-ok">OK</button>
       </div>
     </div>
@@ -87,7 +90,7 @@
         <input id="global-search" class="gsearch" placeholder="Поиск: номер / SN / IMSI / имя…" />
         <button class="btn" id="btn-skills" hidden>Очереди</button>
         <button class="btn" id="btn-pause">Перерыв</button>
-        <button class="btn" id="btn-aftercall">After-call</button>
+        <button class="btn" id="btn-aftercall">Постобработка</button>
         <button class="btn primary" id="btn-ready">Готов</button>
         <button class="btn ghost" id="btn-admin" title="Админ" hidden>Admin</button>
         <button class="btn ghost icon" id="btn-theme" title="Theme">☾</button>
@@ -104,6 +107,7 @@
           <button class="ctrl" data-act="leave"    title="Leave queue">Leave</button>
           <button class="ctrl" data-act="release"  title="Release">Release</button>
           <button class="ctrl prm" data-act="answer" title="Answer">Answer</button>
+          <button class="ctrl prm" id="btn-unlock-audio" type="button" title="Включить звук в браузере" hidden>🔊 Звук</button>
           <button class="ctrl" data-act="mute"     title="Mute">Mute</button>
           <button class="ctrl" data-act="integr"   title="Integration">Integr.</button>
           <button class="ctrl" data-act="callout"  title="Call Out">Call Out</button>
@@ -120,7 +124,6 @@
         </div>
 
         <div class="csp-grid">
-          <!-- LEFT: compact call-info panel (CSP-style) -->
           <aside class="csp-callinfo">
             <div class="ci-title" id="ci-status">No call</div>
             <div class="ci-row"><div class="k">SN</div>          <div class="v" id="ci-sn">—</div></div>
@@ -135,14 +138,6 @@
             <div class="ci-actions">
               <button class="btn ghost" id="ci-refresh">Refresh</button>
             </div>
-
-            <div class="ci-divider"></div>
-            <h4 class="ci-h">Очереди (live)</h4>
-            <table class="t" id="queues-tbl">
-              <thead><tr><th>Q</th><th>wait</th><th>long</th><th>SLA</th></tr></thead>
-              <tbody></tbody>
-            </table>
-
             <div class="ci-divider"></div>
             <div class="row" style="gap:6px">
               <input id="dial-num" placeholder="набор…" style="flex:1; min-width:0" />
@@ -150,7 +145,6 @@
             </div>
           </aside>
 
-          <!-- RIGHT: Basic Customer Information + 4 service tabs -->
           <div class="stack csp-main">
             <section class="card">
               <div class="row">
@@ -265,7 +259,7 @@
             <select id="fl-outcome">
               <option value="">любой итог</option>
               <option value="answered">answered</option>
-              <option value="missed">missed</option>
+              <option value="failed">failed (исходящий)</option>
             </select>
             <input id="fl-search" placeholder="Поиск по номеру…" />
             <button class="btn" id="fl-apply">Применить</button>
@@ -376,30 +370,107 @@
   <div class="modal-back" id="svc-modal">
     <div class="modal svc-modal">
       <div class="row">
-        <h3 style="margin:0">Handle number: <span id="svc-handle">—</span></h3>
+        <h3 style="margin:0">Номер: <span id="svc-handle">—</span></h3>
         <div class="spacer"></div>
-        <button class="btn ghost icon" id="svc-export" title="Export catalog">↧</button>
-        <button class="btn ghost icon" id="svc-close" title="Close">✕</button>
+        <button class="btn ghost icon" id="svc-export" title="Экспорт каталога">↧</button>
+        <button class="btn ghost icon" id="svc-close" title="Закрыть">✕</button>
       </div>
       <div class="row" style="margin-top:8px">
-        <input id="svc-search" placeholder="Search…" style="flex:1" />
-        <button class="btn"       id="svc-do-search">Search</button>
-        <button class="btn ghost" id="svc-do-clear">Clear</button>
+        <input id="svc-search" placeholder="Поиск…" style="flex:1" />
+        <button class="btn"       id="svc-do-search">Поиск</button>
+        <button class="btn ghost" id="svc-do-clear">Сброс</button>
       </div>
       <div class="svc-grid" style="margin-top:10px">
         <aside class="svc-cats">
-          <div class="svc-cats-title">Popular Service Type</div>
+          <div class="svc-cats-title">Тип обращения</div>
           <div id="svc-cat-list"></div>
         </aside>
         <div class="svc-items" id="svc-items"></div>
       </div>
       <div class="row" style="justify-content:flex-end; margin-top:10px">
-        <button class="btn ghost"   id="svc-cancel">Close</button>
-        <button class="btn primary" id="svc-fill">Fill In</button>
+        <button class="btn ghost"   id="svc-cancel">Закрыть</button>
+        <button class="btn primary" id="svc-fill">Заполнить</button>
+      </div>
+      <p class="svc-foot-hint">Клик по подпункту → карточка обращения (Service content). Двойной клик — то же.</p>
+    </div>
+  </div>
+
+  <div class="modal-back" id="tt-modal">
+    <div class="modal tt-modal">
+      <div class="tt-head row">
+        <h3 style="margin:0" id="tt-title">—</h3>
+        <div class="spacer"></div>
+        <button class="btn ghost" id="tt-modify">Изменить</button>
+        <button class="btn ghost icon" id="tt-close-x" title="Закрыть">✕</button>
+      </div>
+      <p class="tt-subcode" id="tt-subcode">—</p>
+      <div class="tt-type-row">
+        <span class="tt-type-label">Type :</span>
+        <span id="tt-type-path" class="tt-type-path">—</span>
+      </div>
+      <div class="tt-form-grid">
+        <section class="tt-section">
+          <h4 class="tt-section-title">Basic Customer Information</h4>
+          <label class="field tt-req"><span>Handle number</span>
+            <input id="tt-handle" readonly />
+          </label>
+        </section>
+        <section class="tt-section">
+          <h4 class="tt-section-title">Basic Handle Information</h4>
+          <label class="field"><span>Группа вызова</span>
+            <input id="tt-call-group" placeholder="support / billing / …" />
+          </label>
+          <label class="field tt-req"><span>Service content</span>
+            <textarea id="tt-content" rows="8" placeholder="О чём говорили с абонентом: симптомы, локация, что проверили, что обещали…"></textarea>
+          </label>
+          <p class="tt-hint">Обязательное поле. После Submit запись попадёт в Service Request и в audit.</p>
+        </section>
+      </div>
+      <div class="tt-actions row wrap">
+        <button class="btn primary" id="tt-submit">Submit</button>
+        <button class="btn" id="tt-save">Save</button>
+        <button class="btn" id="tt-prehandle">Prehandle</button>
+        <button class="btn" id="tt-direct">Direct Reply</button>
+        <button class="btn ghost" id="tt-cancel">Отмена</button>
+        <button class="btn ghost" id="tt-import">Import</button>
+        <button class="btn ghost" id="tt-export-row">Export</button>
+        <button class="btn ghost" id="tt-back-svc">← К каталогу</button>
+      </div>
+      <div class="tt-tabs" id="tt-tabs">
+        <button type="button" class="tt-tab active" data-tt-tab="tasks">Task List</button>
+        <button type="button" class="tt-tab" data-tt-tab="handle-info">Task Handle Info</button>
+        <button type="button" class="tt-tab" data-tt-tab="log">Handle Log</button>
+        <button type="button" class="tt-tab" data-tt-tab="same">Same Type Complaint</button>
+        <button type="button" class="tt-tab" data-tt-tab="repeat">Repeated &amp; Urge TT</button>
+      </div>
+      <div class="tt-tab-body">
+        <table class="t tt-task-tbl" id="tt-task-tbl">
+          <thead id="tt-task-head">
+            <tr>
+              <th style="width:28px"></th>
+              <th>Operation</th>
+              <th>SN</th>
+              <th>TT SN</th>
+              <th>Handle number</th>
+              <th>Handle time</th>
+              <th>Service request type</th>
+              <th>Handle progress</th>
+              <th>Customer name</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="tt-log-panel" id="tt-log-panel" hidden>
+          <h4 class="tt-section-title">Handle Log (текущее обращение)</h4>
+          <pre id="tt-log-text" class="tt-log-text">—</pre>
+        </div>
+        <p class="tt-empty" id="tt-empty">Sorry, no matching records</p>
+        <p class="tt-total" id="tt-total">Total 0 records</p>
       </div>
     </div>
   </div>
 
-  <script type="module" src="agent.js"></script>
+  <audio id="sip-remote-audio" autoplay playsinline></audio>
+  <script type="module" src="agent.js?v=20260616-audio15"></script>
 </body>
 </html>

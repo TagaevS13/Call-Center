@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "updated_at": "2026-05-19",
   "groups": [
     {
@@ -14,47 +14,87 @@
       "name": "Супервизоры",
       "description": "Мониторинг и управление сменой",
       "default_role": "supervisor",
-      "queues": ["support", "sales", "billing", "vip", "overflow"]
+      "queues": ["russkaya", "tajikskaya", "angliyskaya", "uzbekskaya", "vip", "overflow", "tech"]
     },
     {
-      "id": "support_l1",
-      "name": "Поддержка L1",
-      "description": "Первая линия поддержки",
+      "id": "common_group",
+      "name": "Common group",
+      "description": "CSP — общая группа, несколько направлений вызовов",
       "default_role": "agent",
-      "queues": ["support", "overflow"],
+      "queues": ["vkhodyashie", "tajikskaya", "russkaya"],
       "default_penalty": 0
     },
     {
-      "id": "support_l2",
-      "name": "Поддержка L2",
-      "description": "Эскалация сложных обращений",
+      "id": "skill_russkaya",
+      "name": "Russkaya Gruppa",
+      "description": "CSP Skill #8 — русскоязычная группа",
       "default_role": "agent",
-      "queues": ["support", "vip"],
-      "default_penalty": 5
-    },
-    {
-      "id": "sales",
-      "name": "Продажи",
-      "description": "Входящие продажи и допродажи",
-      "default_role": "agent",
-      "queues": ["sales"],
+      "queues": ["russkaya", "crbt_rus", "mbtrus"],
       "default_penalty": 0
     },
     {
-      "id": "billing",
-      "name": "Биллинг",
-      "description": "Вопросы по счетам и тарифам",
+      "id": "skill_tajikskaya",
+      "name": "Tajikskaya gruppa",
+      "description": "CSP Skill #7 — таджикоязычная группа",
       "default_role": "agent",
-      "queues": ["billing"],
+      "queues": ["tajikskaya", "crbt_taj"],
       "default_penalty": 0
     },
     {
-      "id": "vip",
+      "id": "skill_angliyskaya",
+      "name": "angliyskaya gruppa",
+      "description": "CSP Skill #1 — англоязычная группа",
+      "default_role": "agent",
+      "queues": ["angliyskaya"],
+      "default_penalty": 0
+    },
+    {
+      "id": "skill_uzbekskaya",
+      "name": "uzbekskaya gruppa",
+      "description": "CSP Skill #2 — узбекоязычная группа",
+      "default_role": "agent",
+      "queues": ["uzbekskaya"],
+      "default_penalty": 0
+    },
+    {
+      "id": "skill_ishodyashiye",
+      "name": "Iskhodyashiye zvonki",
+      "description": "CSP Skill #6 — исходящие звонки",
+      "default_role": "agent",
+      "queues": ["ishodyashiye"],
+      "default_penalty": 0
+    },
+    {
+      "id": "skill_tech",
+      "name": "Tech",
+      "description": "CSP Skill #13 — техническая поддержка",
+      "default_role": "agent",
+      "queues": ["tech"],
+      "default_penalty": 0
+    },
+    {
+      "id": "skill_vip",
       "name": "VIP",
-      "description": "Приоритетные абоненты",
+      "description": "CSP Skill #20 — VIP абоненты",
       "default_role": "agent",
       "queues": ["vip"],
       "default_penalty": 10
+    },
+    {
+      "id": "skill_mtt",
+      "name": "MTT(Call-Centre)",
+      "description": "CSP Skill #14",
+      "default_role": "agent",
+      "queues": ["mtt_cc"],
+      "default_penalty": 0
+    },
+    {
+      "id": "support_l1",
+      "name": "Поддержка L1 (legacy demo)",
+      "description": "Старая demo-группа",
+      "default_role": "agent",
+      "queues": ["support", "overflow"],
+      "default_penalty": 0
     },
     {
       "id": "qa",

@@ -1,15 +1,147 @@
-.admin-main { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.admin-main { display: flex; flex-direction: column; gap: 12px; min-height: min-content; }
+.panel.skill-settings-panel.active { flex: none; }
+.panel.vdn-panel.active { flex: none; gap: 16px; }
+.panel.subscribers-panel.active { flex: none; gap: 16px; }
+.panel.subscribers-panel table.skill-table td:nth-child(5) {
+  font-size: 13px; color: var(--fg-1); max-width: none; white-space: normal;
+}
+.sub-scope-card {
+  max-height: 160px; overflow: auto; padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.sub-scope-card label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.tag.bl { background: rgba(220, 60, 60, 0.2); color: #f88; }
+.tag.vip { background: rgba(220, 180, 40, 0.2); color: #ec6; }
+.panel.vdn-panel table.skill-table td:nth-child(4) {
+  font-size: 13px; color: var(--fg-1); max-width: none; white-space: normal;
+}
+#vm-lang-tbl input, #vm-lang-tbl select { width: 100%; min-width: 0; }
+#vm-lang-tbl td { padding: 8px; vertical-align: middle; }
+.workflow-hint {
+  font-size: 13px; color: var(--fg-2); margin: 0; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg-2);
+  line-height: 1.45;
+}
+.workflow-hint strong { color: var(--fg); }
+.section-title {
+  margin: 0 0 10px; font-size: 16px; font-weight: 600;
+}
+
+/* Настройка скил групп — таблицы на всю ширину, без крошечного скролла */
+.skill-settings-panel {
+  gap: 28px;
+  min-height: auto;
+  padding-bottom: 24px;
+}
+.skill-settings-panel .skill-table-card {
+  overflow: visible;
+  max-height: none;
+  padding: 0;
+}
+.skill-settings-panel .skill-table-card--groups {
+  margin-bottom: 8px;
+}
+.skill-settings-panel table.skill-table {
+  font-size: 14px;
+}
+.skill-settings-panel table.skill-table th,
+.skill-settings-panel table.skill-table td {
+  padding: 12px 16px;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+.skill-settings-panel table.skill-table th {
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--bg-2);
+  border-bottom: 2px solid var(--line);
+  white-space: nowrap;
+}
+.skill-settings-panel table.skill-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.skill-settings-panel #groups-tbl td:nth-child(3) {
+  font-size: 13px;
+  color: var(--fg-1);
+  max-width: none;
+  min-width: 280px;
+  white-space: normal;
+  word-break: break-word;
+}
+.skill-settings-panel #queues-tbl td:nth-child(2) {
+  font-weight: 500;
+}
+.skill-settings-panel .btn.ghost {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 15px;
+}
+.skill-settings-panel .admin-toolbar {
+  margin-bottom: 10px;
+}
+.skill-settings-panel .kbd {
+  font-size: 13px;
+  padding: 3px 8px;
+}
+
+/* Справочник «Очереди» — удобная высота при длинном списке */
+.panel[data-panel="queues"] .queues-catalog-card {
+  overflow: auto;
+  max-height: calc(100vh - 180px);
+  padding: 0;
+}
+.panel[data-panel="queues"] .queues-catalog-card table.t th,
+.panel[data-panel="queues"] .queues-catalog-card table.t td {
+  padding: 10px 14px;
+}
 .admin-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .admin-toolbar .spacer { flex: 1; }
-.tab-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
-.tab-bar .btn.active { background: var(--acc); color: #fff; border-color: var(--acc); }
 .panel { display: none; flex-direction: column; gap: 10px; min-height: 0; }
 .panel.active { display: flex; }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 0; }
 @media (max-width: 960px) { .split { grid-template-columns: 1fr; } }
-.form-grid { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; align-items: center; max-width: 520px; }
+.form-grid { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; align-items: center; }
 .form-grid input, .form-grid select { width: 100%; }
 .perm-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 200px; overflow: auto; }
 .perm-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line); }
 .perm-chip.on { border-color: var(--acc); color: var(--acc); }
 .badge-role { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--bg-2); }
+
+.agent-modal { width: min(720px, 96vw); max-height: 92vh; overflow: auto; }
+.agent-form { max-width: none; }
+.agent-skills-block {
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
+}
+.skill-mode-row {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 10px;
+}
+.skill-mode-row .label { font-size: 13px; color: var(--fg-2); min-width: 120px; }
+.field-label { display: block; font-size: 13px; color: var(--fg-2); margin-bottom: 6px; }
+.group-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.group-chip {
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg-2); font-size: 13px;
+  cursor: pointer;
+}
+.group-chip.on { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, var(--bg-2)); }
+.group-chip input { margin: 0; }
+#um-agent-groups-tbl td:nth-child(2),
+#groups-tbl td:nth-child(3) {
+  font-size: 12px; color: var(--fg-2); max-width: 320px;
+}
+.agent-group-pick-meta { font-size: 11px; color: var(--fg-2); margin-left: 4px; }
+.pick-row { font-size: 13px; color: var(--fg-2); }
+#um-skills-tbl input[type=number] { width: 64px; }
+.hint { font-size: 12px; color: var(--fg-2); margin: 8px 0 0; }
+.modal-actions { justify-content: flex-end; margin-top: 16px; gap: 8px; }
+.skill-pick-list {
+  margin-top: 10px; max-height: 280px; overflow: auto; padding: 4px;
+}
+.skill-pick-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.skill-pick-item:hover { background: var(--bg-2); }
+.skill-pick-item input { margin: 0; }
+.skills-summary { font-size: 12px; color: var(--fg-2); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

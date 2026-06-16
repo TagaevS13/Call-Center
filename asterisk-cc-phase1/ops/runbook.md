@@ -3,6 +3,10 @@
 ## Статус системы за 60 секунд
 
 ```bash
+# маршрут GSM (project, два NIC)
+ip r | grep 10.1.5   # expect /24, /29, /27 — not /32
+bash scripts/verify-gsm-config.sh
+ip route get 10.1.5.75
 # на каждой ноде Asterisk
 asterisk -rx "core show channels count"
 asterisk -rx "queue show"
@@ -29,7 +33,7 @@ psql -d asterisk_cc -c "select * from v_queue_realtime;"
 
 - Ежедневно: проверка алертов, контроль свободного места `recordings` и WAL Postgres.
 - Еженедельно: ревью `audit_log` за неделю на аномалии (массовые ChanSpy, изменения членства).
-- Ежемесячно: ревью емкости (concurrent calls peak), план по транковой ёмкости.
+- Ежемесячно: ревью емкости (concurrent calls peak), план по транковой ёмкости; см. [load-test-300.md](load-test-300.md).
 - Ежеквартально: тест восстановления Postgres из pgBackRest (см. `ops/backup_restore.md`).
 - Ежегодно: ротация сертификатов CA/PJSIP TLS/WSS.
 

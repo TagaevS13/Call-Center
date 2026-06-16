@@ -8,19 +8,20 @@ rule_files:
 scrape_configs:
   - job_name: prometheus
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
 
+  # Asterisk metrics (robinmarechal exporter started inside asterisk-a container, host network)
   - job_name: asterisk
     static_configs:
-      - targets: ['ast-a:9815', 'ast-b:9815']
-        labels: {tier: voice}
+      - targets: ["host.docker.internal:9815"]
+        labels: {tier: voice, node: asterisk-a}
 
   - job_name: postgres
     static_configs:
-      - targets: ['db-1:9187']
+      - targets: ["postgres-exporter:9187"]
         labels: {tier: db}
 
   - job_name: node
     static_configs:
-      - targets: ['ast-a:9100', 'ast-b:9100', 'db-1:9100', 'mon-1:9100']
-        labels: {tier: os}
+      - targets: ["host.docker.internal:9100"]
+        labels: {tier: os, node: project}

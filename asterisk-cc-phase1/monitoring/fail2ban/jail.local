@@ -3,6 +3,8 @@ bantime  = 1h
 findtime = 10m
 maxretry = 5
 backend  = auto
+# Admin / office nets — never ban SSH when SIP auth fails (adjust to your VPN/office)
+ignoreip = 127.0.0.1/8 ::1 10.0.0.0/8 172.16.0.0/12
 
 [asterisk]
 enabled  = true
@@ -13,7 +15,10 @@ logpath  = /var/log/asterisk/messages
 maxretry = 5
 findtime = 10m
 bantime  = 24h
-action   = iptables-allports[name=asterisk, protocol=all]
+# SIP only — do NOT use iptables-allports (it drops SSH from the same client IP)
+port     = 5060,5061
+protocol = udp,tcp
+banaction = iptables-multiport
 
 [asterisk-pjsip]
 enabled  = true
@@ -22,3 +27,6 @@ logpath  = /var/log/asterisk/security
 maxretry = 3
 findtime = 5m
 bantime  = 24h
+port     = 5060,5061
+protocol = udp,tcp
+banaction = iptables-multiport

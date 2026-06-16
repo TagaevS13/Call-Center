@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": 1,
+      "msisdn": "992901112233",
+      "list_type": "blacklist",
+      "scope": "all",
+      "queues": [],
+      "group_ids": [],
+      "permanent": true,
+      "valid_from": null,
+      "valid_until": null,
+      "reason": "Мошенничество — бессрочно",
+      "enabled": true,
+      "created_at": "2026-05-01"
+    },
+    {
+      "id": 2,
+      "msisdn": "992907776655",
+      "list_type": "blacklist",
+      "scope": "selected",
+      "queues": ["russkaya", "tajikskaya"],
+      "group_ids": ["common_group"],
+      "permanent": false,
+      "valid_from": "2026-05-01",
+      "valid_until": "2026-12-31",
+      "reason": "Временная блокировка по рус./тадж. направлениям",
+      "enabled": true,
+      "created_at": "2026-05-10"
+    },
+    {
+      "id": 3,
+      "msisdn": "992935551122",
+      "list_type": "vip",
+      "scope": "all",
+      "queues": ["vip"],
+      "group_ids": [],
+      "permanent": true,
+      "valid_from": null,
+      "valid_until": null,
+      "reason": "Корпоративный VIP — без ожидания в очереди",
+      "enabled": true,
+      "created_at": "2026-04-15"
+    },
+    {
+      "id": 4,
+      "msisdn": "992901009900",
+      "list_type": "vip",
+      "scope": "selected",
+      "queues": ["vip"],
+      "group_ids": ["skill_vip"],
+      "permanent": false,
+      "valid_from": "2026-06-01",
+      "valid_until": "2027-06-01",
+      "reason": "Промо-VIP на год",
+      "enabled": true,
+      "created_at": "2026-05-19"
+    }
+  ]
+}

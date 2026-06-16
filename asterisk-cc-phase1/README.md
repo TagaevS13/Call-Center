@@ -14,7 +14,8 @@ PBX/ACD, IVR, запись разговоров, CTI (AMI/ARI/AGI), суперв
 - `postgres/pgbackrest/` — конфиг резервного копирования.
 - `monitoring/` — Prometheus, alerts, Grafana provisioning, дашборд, fail2ban.
 - `tests/` — приёмочные сценарии (sipp), smoke SQL, чек-лист.
-- `ops/` — пошаговая установка, runbook эксплуатации, процедура восстановления из бэкапа.
+- `ops/` — установка, runbook, GSM ([gsm-ip-reference.md](ops/gsm-ip-reference.md)), нагрузка до 300 concurrent ([load-test-300.md](ops/load-test-300.md)), WebRTC FW.
+- Диагностика звука «туда и обратно» (оба плеча RTP): **[ops/audio-two-way-runbook.md](ops/audio-two-way-runbook.md)**.
 
 ## Быстрый старт (lab)
 
@@ -28,3 +29,22 @@ PBX/ACD, IVR, запись разговоров, CTI (AMI/ARI/AGI), суперв
 ## Production-развёртывание
 
 См. [ops/deploy.md](ops/deploy.md). Стенд docker-compose **не** является целевой prod-конфигурацией — он нужен для разработки и приёмки. В prod каждый компонент идёт на свою VM/нод по [ops/runbook.md](ops/runbook.md).
+
+## Lab на одном Ubuntu-сервере (Docker + SMSC рядом)
+
+Пошагово: **[ops/deploy-docker-ubuntu.md](ops/deploy-docker-ubuntu.md)**  
+Проверка портов: `bash scripts/check-ports.sh`
+
+## Lab на сервере project (legacy note)
+
+```bash
+# С Windows — полная установка SMSC + CC lab:
+powershell -File ~\deploy\upload-and-install.ps1
+
+# Проверка:
+sudo /tmp/project-server/scripts/07-verify.sh
+sudo /tmp/project-server/scripts/07b-lab-acceptance.sh
+```
+
+Lab `.env`: `PG_HOST=127.0.0.1` (Asterisk использует `network_mode: host`).
+Prod-миграция: `sudo /tmp/project-server/scripts/08-prod-migration-prep.sh`

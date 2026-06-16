@@ -1,29 +1,129 @@
 import { $, $$, fmtDuration, fmtTime, toast, loadConfig, saveConfig } from "../shared/common.js";
+import { apiGet } from "../shared/api.js";
 import {
   requireSession,
   clearSession,
   hasPermission,
   resolveSkillIdsFromQueues,
+  loadSkillQueues,
 } from "../shared/auth.js";
 
 const ccSession = requireSession({ roles: ["agent", "admin"], redirect: "../index.html" });
 if (!ccSession) throw new Error("no session");
 
+function defaultTelephonyHost() {
+  const h = (window.location.hostname || "").trim();
+  if (h && h !== "localhost" && h !== "127.0.0.1") return h;
+  return "172.16.6.183";
+}
+function defaultWssUrl() {
+  const host = defaultTelephonyHost();
+  // UI по HTTP — без TLS; для доверенной LAN можно ws:// (без сертификата)
+  if (window.location.protocol === "http:") {
+    return `ws://${host}:8088/ws`;
+  }
+  return `wss://${host}:8089/ws`;
+}
+
+const LEGACY_TELEPHONY_HOSTS = new Set(["cc.example.local", "localhost", "127.0.0.1"]);
+
+/** Старый localStorage (cc.example.local) ломает WSS — сертификат привязан к IP хоста. */
+function normalizeTelephonyHost(host, tel = {}) {
+  const h = (host || "").trim().toLowerCase();
+  const api = (tel.domain || "").trim();
+  const page = defaultTelephonyHost();
+  if (!h || LEGACY_TELEPHONY_HOSTS.has(h) || h.includes("example.")) {
+    return api || page;
+  }
+  const pageHost = (window.location.hostname || "").trim();
+  if (pageHost && !LEGACY_TELEPHONY_HOSTS.has(pageHost) && h !== pageHost) {
+    return api || pageHost || h;
+  }
+  return host.trim();
+}
+
+function resolveTelephonySettings(saved = {}, tel = {}) {
+  const domain = normalizeTelephonyHost(saved.domain || tel.domain, tel);
+  const useHttpWs = window.location.protocol === "http:";
+  const sipWsOk = (url) =>
+    (url.startsWith("wss://") || url.startsWith("ws://")) && url.includes("/ws");
+  let wss = (saved.wss || (useHttpWs ? tel.ws : tel.wss) || tel.wss || tel.ws || defaultWssUrl()).trim();
+  if (/example\.local|cc\.example/i.test(wss) || !sipWsOk(wss)) {
+    wss = useHttpWs ? `ws://${domain}:8088/ws` : `wss://${domain}:8089/ws`;
+  } else {
+    try {
+      const u = new URL(wss);
+      const bad =
+        LEGACY_TELEPHONY_HOSTS.has(u.hostname.toLowerCase()) || u.hostname.includes("example.");
+      if (bad || u.hostname !== domain) {
+        u.hostname = domain;
+        u.port = useHttpWs && wss.startsWith("ws://") ? "8088" : "8089";
+        u.protocol = useHttpWs && wss.startsWith("ws://") ? "ws:" : "wss:";
+        u.pathname = "/ws";
+        wss = u.toString();
+      }
+    } catch {
+      wss = useHttpWs ? `ws://${domain}:8088/ws` : `wss://${domain}:8089/ws`;
+    }
+  }
+  if (useHttpWs && tel.ws) wss = tel.ws;
+  else if (!useHttpWs && tel.wss) wss = tel.wss;
+  if (!useHttpWs && wss.startsWith("ws://")) {
+    try {
+      const u = new URL(wss);
+      u.protocol = "wss:";
+      if (!u.port || u.port === "8088") u.port = "8089";
+      wss = u.toString();
+    } catch {
+      wss = `wss://${domain}:8089/ws`;
+    }
+  }
+  const host = domain;
+  return {
+    domain,
+    wss,
+    cert_url: tel.cert_url || `https://${host}:8089/static/index.html`,
+    agent_cert_url: tel.agent_cert_url || `https://${host}:9443/agent/`,
+    cert_urls: tel.cert_urls || [
+      `https://${host}:9443/agent/`,
+      `https://${host}:8089/static/index.html`,
+    ],
+    turn: tel.turn !== false,
+    turn_urls: tel.turn_urls,
+    turn_user: tel.turn_user,
+    turn_password: tel.turn_password,
+    webrtc_mode: tel.webrtc_mode,
+    bundle_policy: tel.bundle_policy,
+  };
+}
+
+/** Edge/Chrome: принять самоподписанный TLS на :9443 (UI) и :8089 (WSS). */
+async function ensureTlsExceptions(host, urls) {
+  const list = urls?.length ? urls : [
+    `https://${host}:9443/agent/`,
+    `https://${host}:8089/static/index.html`,
+  ];
+  for (const url of list) {
+    try {
+      await fetch(url, { mode: "no-cors", cache: "no-store" });
+    } catch { /* пользователь должен открыть ссылку вручную */ }
+  }
+}
+
+let sipConnectAttempt = 0;
+let sipReconnectTimer = null;
+/** @type {import('sip.js').SessionState | null} */
+let SipSessionState = null;
+
 const state = {
   config: null,
   ua: null,
+  registerer: null,
   sipCall: null,
   agentState: "OFFLINE",
   stateSince: Date.now(),
   call: null,             // active call: { dir, phase, number, name, queue, profile, startedAt, sn, mdn, group, calling, called }
   history: [],
-  queues: [
-    { name: "support", waiting: 0, longest: 0, sla: 0.0 },
-    { name: "sales",   waiting: 0, longest: 0, sla: 0.0 },
-    { name: "billing", waiting: 0, longest: 0, sla: 0.0 },
-    { name: "vip",     waiting: 0, longest: 0, sla: 0.0 },
-    { name: "overflow",waiting: 0, longest: 0, sla: 0.0 },
-  ],
   breaks: [],
   currentBreak: null,
   catalog: null,           // services_catalog.json content
@@ -51,14 +151,43 @@ window.addEventListener("hashchange", () => {
 });
 
 // ---- SIP / session bootstrap ----
-function showSipModal() {
+async function loadTelephonyDefaults() {
+  try {
+    const r = await fetch("/api/public/telephony");
+    if (r.ok) return await r.json();
+  } catch { /* ignore */ }
+  return { domain: defaultTelephonyHost(), wss: defaultWssUrl() };
+}
+
+async function showSipModal() {
   const saved = loadConfig() || {};
+  const tel = await loadTelephonyDefaults();
+  const resolved = resolveTelephonySettings(saved, tel);
+  saveConfig({ ...saved, user: ccSession.sipUser || saved.user || "1001", ...resolved });
   const sip = ccSession.sipUser || saved.user || "1001";
   $("#sip-who").textContent = `${ccSession.fullName} · ${ccSession.login} (${ccSession.roleLabel})`;
   $("#cfg-user").value = sip;
-  $("#cfg-wss").value = saved.wss || "wss://cc.example.local:8089/ws";
-  $("#cfg-domain").value = saved.domain || "cc.example.local";
-  $("#cfg-demo").checked = saved.demo ?? true;
+  const host = resolved.domain;
+  $("#cfg-wss").value = resolved.wss;
+  $("#cfg-domain").value = resolved.domain;
+  const cert8089 = resolved.cert_url || `https://${host}:8089/static/index.html`;
+  const cert9443 = resolved.agent_cert_url || `https://${host}:9443/agent/`;
+  const certHint = $("#sip-cert-hint");
+  if (certHint) {
+    const edgeNote = /Edg\//.test(navigator.userAgent)
+      ? " <strong>Edge:</strong> примите сертификат на <em>обеих</em> ссылках (9443 и 8089)."
+      : "";
+    certHint.innerHTML =
+      `Перед «Продолжить» откройте и примите сертификат (Дополнительно → перейти на сайт):<br>` +
+      `1) <a href="${cert9443}" target="_blank" rel="noopener">Agent UI :9443</a> — иначе «Небезопасно» и нет микрофона<br>` +
+      `2) <a href="${cert8089}" target="_blank" rel="noopener">Asterisk WSS :8089</a> — иначе SIP не подключится` +
+      edgeNote;
+  }
+  const certLink = document.getElementById("sip-cert-link");
+  if (certLink) {
+    certLink.href = cert8089;
+    certLink.textContent = `${host}:8089 (WSS)`;
+  }
   $("#sip-modal").classList.add("show");
 }
 function hideSipModal() {
@@ -66,22 +195,65 @@ function hideSipModal() {
   $("#app").style.display = "grid";
 }
 
-function buildConfig(demoOverride) {
+function buildConfig(tel = {}) {
   const saved = loadConfig() || {};
-  const demo = demoOverride ?? saved.demo ?? true;
+  const fromUi = {
+    wss: ($("#cfg-wss")?.value || "").trim(),
+    domain: ($("#cfg-domain")?.value || "").trim(),
+  };
+  const resolved = resolveTelephonySettings({ ...saved, ...fromUi }, tel);
   return {
     user: ccSession.sipUser || saved.user || "1001",
     pass: ccSession.sipPassword || "",
-    wss: ($("#cfg-wss")?.value || saved.wss || "wss://cc.example.local:8089/ws").trim(),
-    domain: ($("#cfg-domain")?.value || saved.domain || "cc.example.local").trim(),
-    demo,
+    wss: resolved.wss,
+    domain: resolved.domain,
+    cert_url: resolved.cert_url,
+    agent_cert_url: resolved.agent_cert_url,
+    cert_urls: resolved.cert_urls,
     login: ccSession.login,
   };
 }
 
-async function beginWorkspace() {
-  state.config = buildConfig($("#cfg-demo")?.checked);
+/** Освободить микрофон после звонка (Edge/Chrome не «глушит» другие вкладки). */
+function releaseAgentMicrophone() {
+  const pc = state.sipCall?.sessionDescriptionHandler?.peerConnection;
+  pc?.getSenders().forEach((s) => {
+    if (s.track) {
+      try { s.track.stop(); } catch (_) { /* ignore */ }
+    }
+  });
+}
+
+function agentHttpsUrl() {
+  const host = defaultTelephonyHost();
+  const tlsPort = "9443";
+  return `https://${host}:${tlsPort}/agent/`;
+}
+
+function warnInsecureMicrophone() {
+  if (window.isSecureContext) return false;
+  const url = agentHttpsUrl();
+  toast(
+    `Микрофон в браузере недоступен по HTTP. Откройте Agent по HTTPS: ${url} (примите сертификат один раз).`,
+    "err",
+    20000
+  );
+  return true;
+}
+
+async function ensureMicrophoneAccess() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Браузер не поддерживает доступ к микрофону");
+  }
+  const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+  stream.getTracks().forEach((t) => t.stop());
+}
+
+async function continueWorkspaceSetup() {
+  const tel = await loadTelephonyDefaults();
+  state.config = buildConfig(tel);
   saveConfig(state.config);
+  await ensureTlsExceptions(state.config.domain, state.config.cert_urls);
   hideSipModal();
   $("#who").textContent = `${ccSession.fullName} · ${ccSession.login}`;
   if (ccSession.role === "admin") {
@@ -90,6 +262,25 @@ async function beginWorkspace() {
   }
   await loadCatalog();
   await enterShift();
+}
+
+async function beginWorkspace() {
+  if (warnInsecureMicrophone()) {
+    const go = confirm(
+      `Для ответа на звонки нужен HTTPS.\n\nОткрыть ${agentHttpsUrl()} ?`
+    );
+    if (go) window.location.href = agentHttpsUrl();
+    return;
+  }
+  try {
+    await ensureMicrophoneAccess();
+  } catch (e) {
+    toast(`Разрешите доступ к микрофону в браузере: ${e?.message || e}`, "err", 12000);
+    return;
+  }
+  unlockAudioPlayback();
+  await requestCallNotifications();
+  await continueWorkspaceSetup();
 }
 
 function getAssignedSkillIds() {
@@ -127,10 +318,34 @@ async function enterShift() {
   showSkillsModal();
 }
 
+let shiftStarted = false;
 function finishShiftStart() {
-  if (state.config.demo) startDemo();
-  else startSip();
+  if (shiftStarted) return;
+  shiftStarted = true;
+  startSip();
+  loadCallHistory();
   showSection(location.hash.replace("#", "") || "workspace");
+}
+
+async function loadCallHistory() {
+  const sip = state.config?.user || ccSession.sipUser;
+  if (!sip) return;
+  try {
+    const res = await apiGet(`/ops/cdr?agent=${encodeURIComponent(sip)}`);
+    state.history = (res.history || []).map(h => ({
+      time: h.time || "",
+      date: h.date ? new Date(h.date) : new Date(),
+      queue: h.queue || "—",
+      number: h.number || "",
+      dur: h.dur || 0,
+      outcome: h.outcome || "unknown",
+      wrap: h.wrap || "",
+      rec: !!h.rec,
+    }));
+    renderFullHistory();
+  } catch {
+    state.history = [];
+  }
 }
 
 $("#btn-sip-ok").addEventListener("click", beginWorkspace);
@@ -184,11 +399,33 @@ $("#skills-search").addEventListener("input", e => {
     tr.style.display = tr.textContent.toLowerCase().includes(q) ? "" : "none";
   });
 });
-$("#skills-cancel").addEventListener("click", () => $("#skills-modal").classList.remove("show"));
-$("#skills-close").addEventListener("click",  () => $("#skills-modal").classList.remove("show"));
-$("#skills-ok").addEventListener("click", () => {
-  applySkillIds([...state.selectedSkills]);
+function hideSkillsModal() {
   $("#skills-modal").classList.remove("show");
+}
+function closeSkillsModal({ startShift = false } = {}) {
+  hideSkillsModal();
+  if (startShift) finishShiftStart();
+}
+$("#skills-cancel").addEventListener("click", () => {
+  closeSkillsModal({ startShift: true });
+  toast("Окно очередей закрыто. Позже: кнопка «Очереди» в шапке.", "info");
+});
+$("#skills-close").addEventListener("click", () => closeSkillsModal({ startShift: true }));
+$("#skills-modal").addEventListener("click", e => {
+  if (e.target.id === "skills-modal") closeSkillsModal({ startShift: true });
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("#skills-modal").classList.contains("show")) {
+    closeSkillsModal({ startShift: true });
+  }
+});
+$("#skills-ok").addEventListener("click", () => {
+  if (!state.selectedSkills.size) {
+    toast("Выберите хотя бы одну очередь или нажмите «Отмена»", "warn");
+    return;
+  }
+  applySkillIds([...state.selectedSkills]);
+  hideSkillsModal();
   toast(`Выбраны skill queues: ${[...state.selectedSkills].join(", ")}`, "ok");
   finishShiftStart();
 });
@@ -209,6 +446,13 @@ $("#global-search").addEventListener("keydown", e => {
 });
 
 // ---- CSP toolbar ----
+document.getElementById("btn-unlock-audio")?.addEventListener("click", () => {
+  unlockAudioPlayback();
+  void syncRemoteAudioFromSession(state.sipCall, { notify: true });
+});
+$$('[data-act="answer"]').forEach((b) => {
+  b.addEventListener("pointerdown", unlockAudioPlayback, { capture: true });
+});
 $$(".csp-toolbar .ctrl").forEach(b => b.addEventListener("click", () => {
   const act = b.dataset.act;
   switch (act) {
@@ -239,12 +483,18 @@ $$(".csp-toolbar .ctrl").forEach(b => b.addEventListener("click", () => {
 
 // ---- Customer card buttons ----
 $("#cf-query").addEventListener("click", onQuery);
-function onQuery() {
+async function onQuery() {
   const num = $("#cf-handled").value.trim();
   if (!num) { toast("Введите Handled number", "warn"); return; }
-  toast(`Query subscriber ${num} (REST /api/subscribers/${num})`, "info");
-  // demo: fill with synthetic data
-  if (state.config?.demo) fillCustomer(syntheticProfile(num));
+  try {
+    const res = await apiGet(`/subscribers/${encodeURIComponent(num)}`);
+    const p = res.profile || {};
+    if (res.error) toast(`CRM: ${res.error}`, "warn", 4000);
+    fillCustomer(p);
+    toast(`Карточка: ${p.name || p.msisdn || num}`, "ok");
+  } catch (e) {
+    toast(e.message || "Ошибка запроса CRM", "err");
+  }
 }
 function onSendSms() {
   const num = $("#cf-handled").value.trim();
@@ -263,16 +513,28 @@ $("#btn-dial").addEventListener("click", () => {
 // ---- Wrap-up ----
 $("#btn-save-wrap").addEventListener("click", () => {
   const outcome = $("#wrap-outcome").value;
-  const note = $("#wrap-note").value;
-  if (!outcome) { toast("Заполните результат", "warn"); return; }
-  toast(`Wrap сохранён: ${outcome}`, "ok");
+  const note = $("#wrap-note").value.trim();
+  if (!outcome) { toast("Заполните результат wrap-up", "warn"); return; }
+  const wrapText = note ? `${outcome}: ${note}` : outcome;
+  const handled = $("#cf-handled").value.trim();
+  const openSr = state.serviceRequests.find(r =>
+    r.handled === handled && ["draft", "prehandle", "open"].includes(r.status)
+  );
+  if (openSr && !openSr.content && note) {
+    openSr.content = note;
+    openSr.progress = "Wrap-up";
+    renderSRTabs();
+  }
+  if (state.history.length) state.history[0].wrap = wrapText;
+  toast(`Wrap-up сохранён: ${outcome}`, "ok");
   $("#wrap-outcome").value = "";
   $("#wrap-note").value = "";
+  $("#wrap-timer").textContent = "—";
   setAgentState("READY");
 });
 
 // ---- Refresh sidebar / SR / call info ----
-$("#ci-refresh").addEventListener("click", () => { renderCallInfo(); renderQueues(); toast("Refreshed", "info", 800); });
+$("#ci-refresh").addEventListener("click", () => { renderCallInfo(); toast("Refreshed", "info", 800); });
 $("#btn-refresh-sr").addEventListener("click", () => renderSRTabs());
 
 // ---- Tabs in customer lower panel ----
@@ -284,14 +546,21 @@ $$("#sr-tabs .tab").forEach(t => t.addEventListener("click", () => {
 }));
 
 // ---- State machine ----
+const AGENT_STATE_LABEL = {
+  READY: "Ready",
+  BUSY: "On call",
+  PAUSE: "Pause",
+  AFTERCALL: "Wrap-up",
+  OFFLINE: "Offline",
+};
+
 function setAgentState(s) {
   state.agentState = s;
   state.stateSince = Date.now();
   const pill = $("#state-pill");
   pill.dataset.state = s;
-  $("#state-text").textContent = s;
-  if (state.config?.demo && s === "READY") simulateIncomingSoon();
-  toast(`Статус: ${s}`, "info", 1200);
+  $("#state-text").textContent = AGENT_STATE_LABEL[s] || s;
+  if (s !== "BUSY") toast(`Статус: ${AGENT_STATE_LABEL[s] || s}`, "info", 1200);
 }
 
 setInterval(() => {
@@ -312,7 +581,7 @@ setInterval(() => {
 function renderCallInfo() {
   const c = state.call;
   const title = $("#ci-status");
-  title.classList.remove("busy","ringing","arrange");
+  title.classList.remove("busy", "talking", "ringing", "arrange");
   if (!c) {
     title.textContent = state.agentState === "AFTERCALL" ? "Arranging" : "No call";
     if (state.agentState === "AFTERCALL") title.classList.add("arrange");
@@ -328,7 +597,7 @@ function renderCallInfo() {
     return;
   }
   title.textContent = c.phase === "ringing" ? "Ringing" : "Talking";
-  title.classList.add(c.phase === "ringing" ? "ringing" : "busy");
+  title.classList.add(c.phase === "ringing" ? "ringing" : "talking");
   $("#ci-sn").textContent      = c.sn;
   $("#ci-calling").textContent = c.calling || c.number;
   $("#ci-called").textContent  = c.called  || "—";
@@ -353,7 +622,7 @@ function fillCustomer(p) {
   $("#cf-code").value    = p.customer_code || "";
   $("#cf-acct").value    = p.account_code  || "";
   $("#cf-icc").value     = p.icc || "";
-  // populate lower tabs with demo data
+  // populate lower tabs from CRM profile
   state.serviceRequests = p.requests || [];
   state.relatedTT       = p.tickets  || [];
   state.callRedirects   = p.redirects|| [];
@@ -371,17 +640,32 @@ function clearCustomer() {
 }
 
 function renderSRTabs() {
+  const statusCls = (s) => (["submitted", "closed"].includes(s) ? "ok" : "warn");
   const fmtRow = (sr) => `<tr>
     <td>${sr.sn}</td>
-    <td>${sr.type}</td>
+    <td title="${(sr.content || "").replace(/"/g, "&quot;")}">${sr.type}</td>
     <td><span class="kbd">${sr.code}</span></td>
     <td>${new Date(sr.time).toLocaleString()}</td>
-    <td>${sr.queue}</td>
+    <td>${sr.queue || sr.callGroup || "—"}</td>
     <td>${sr.staff}</td>
-    <td><span class="tag ${sr.status==='closed'?'ok':'warn'}">${sr.status}</span></td>
+    <td><span class="tag ${statusCls(sr.status)}">${sr.progress || sr.status}</span></td>
     <td><button class="btn ghost" data-srx="${sr.sn}">Details</button></td>
   </tr>`;
   $("#sr-tbl tbody").innerHTML = state.serviceRequests.map(fmtRow).join("");
+  $("#sr-tbl tbody").querySelectorAll("button[data-srx]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const sr = state.serviceRequests.find(r => r.sn === btn.dataset.srx);
+      if (!sr) return;
+      $("#cf-handled").value = sr.handled || "";
+      $("#svc-handle").textContent = sr.handled || "—";
+      const found = findCatalogItemByCode(sr.code);
+      if (found) {
+        openHandleDetail(found.cat, found.item, found.index, { editingSn: sr.sn });
+      } else {
+        toast("Каталог: пункт не найден, откройте Handle…", "warn");
+      }
+    });
+  });
 
   $("#tt-tbl tbody").innerHTML = state.relatedTT.map(t => `
     <tr><td>${t.no}</td><td>${t.cat}</td><td>${t.created}</td><td>${t.assigned}</td>
@@ -395,35 +679,341 @@ function renderSRTabs() {
     <td>${p.since}</td><td>${p.fee}</td></tr>`).join("");
 }
 
-function renderQueues() {
-  const tb = $("#queues-tbl tbody");
-  tb.innerHTML = "";
-  for (const q of state.queues) {
-    const tr = document.createElement("tr");
-    const cls = q.waiting >= 5 ? "err" : q.waiting >= 2 ? "warn" : "ok";
-    tr.innerHTML = `
-      <td>${q.name}</td>
-      <td><span class="tag ${cls}">${q.waiting}</span></td>
-      <td>${fmtDuration(q.longest)}</td>
-      <td>${Math.round((q.sla||0)*100)}%</td>`;
-    tb.appendChild(tr);
-  }
-}
-
 function pushHistory(row) {
   row.date = new Date();
   state.history.unshift(row);
   if (state.history.length > 500) state.history.pop();
 }
 
+// ---- WebRTC audio (remote = абонент, local = микрофон) ----
+let remoteAudioEl = null;
+/** Один MediaStream на весь звонок — srcObject не пересоздаём (иначе AbortError в Chrome). */
+let remotePlaybackStream = null;
+let remoteSyncTimer = null;
+let webrtcStatsTimer = null;
+let inboundRtpWarnShown = false;
+
+/**
+ * ICE: host + TURN (не только relay — иначе one-way на том же IP PBX).
+ * cc_agent_config: ice_turn:false / ice_stun:true
+ */
+function buildPeerConnectionConfiguration(tel = {}) {
+  const cfg = loadConfig() || {};
+  const host = state.config?.domain || defaultTelephonyHost();
+  const iceServers = [];
+  const useTurn = cfg.ice_turn !== false && cfg.ice_turn !== "0" && tel.turn !== false;
+  if (useTurn) {
+    iceServers.push({
+      urls: tel.turn_urls || [`turn:${host}:3478?transport=udp`],
+      username: tel.turn_user || "ccagent",
+      credential: tel.turn_password || "ccagentturn",
+    });
+  }
+  if (cfg.ice_stun === true || cfg.ice_stun === "1") {
+    iceServers.push({ urls: "stun:stun.l.google.com:19302" });
+  }
+  // bundlePolicy согласуется с AGENT_WEBRTC_MODE на сервере:
+  //  manual (bundle=no)  -> "balanced"   (max-bundle ломает Answer: нет a=group:BUNDLE)
+  //  standard (webrtc=yes -> bundle=yes) -> "max-bundle"
+  const bundlePolicy = tel.bundle_policy === "max-bundle" ? "max-bundle" : "balanced";
+  return {
+    iceServers,
+    iceTransportPolicy: "all",
+    bundlePolicy,
+    rtcpMuxPolicy: "require",
+  };
+}
+
+const audioConstraints = {
+  audio: {
+    echoCancellation: true,
+    noiseSuppression: false,
+    autoGainControl: true,
+  },
+  video: false,
+};
+
+/** Лог [CC-RTP] в F12 каждые 2 с — inbound bytesReceived vs outbound bytesSent. */
+function stopWebRtcStatsLogger() {
+  if (webrtcStatsTimer) {
+    clearInterval(webrtcStatsTimer);
+    webrtcStatsTimer = null;
+  }
+}
+
+function startWebRtcStatsLogger(session, label = "call") {
+  stopWebRtcStatsLogger();
+  inboundRtpWarnShown = false;
+  webrtcStatsTimer = setInterval(() => {
+    const pc = session?.sessionDescriptionHandler?.peerConnection;
+    if (!pc || pc.connectionState === "closed") {
+      stopWebRtcStatsLogger();
+      return;
+    }
+    pc.getStats()
+      .then((stats) => {
+        const byId = new Map();
+        stats.forEach((r) => byId.set(r.id, r));
+        let inbound = null;
+        let outbound = null;
+        let pair = null;
+        stats.forEach((r) => {
+          if (r.type === "inbound-rtp" && (r.kind === "audio" || r.mediaType === "audio")) inbound = r;
+          if (r.type === "outbound-rtp" && (r.kind === "audio" || r.mediaType === "audio")) outbound = r;
+          if (r.type === "candidate-pair" && r.state === "succeeded") pair = r;
+        });
+        const localCand = pair ? byId.get(pair.localCandidateId) : null;
+        const remoteCand = pair ? byId.get(pair.remoteCandidateId) : null;
+        const inB = inbound?.bytesReceived ?? 0;
+        const outB = outbound?.bytesSent ?? 0;
+        const level = inB > 5000 ? "info" : "warn";
+        const msg =
+          `[CC-RTP ${label}] ice=${pc.iceConnectionState} in=${inB || "NO-inbound-rtp"} out=${outB} ` +
+          `local=${localCand?.address || "?"}:${localCand?.port || "?"} ` +
+          `remote=${remoteCand?.address || "?"}:${remoteCand?.port || "?"} ` +
+          `tracks=${collectInboundAudioTracks(session).length}`;
+        if (level === "warn") console.warn(msg);
+        else console.info(msg);
+        if (!inboundRtpWarnShown && outB > 40000 && inB < 5000) {
+          inboundRtpWarnShown = true;
+          const host = state.config?.domain || defaultTelephonyHost();
+          toast(
+            "Звонок принят, но голос абонента не слышен (in=NO-inbound-rtp). " +
+              `На ПК: PowerShell от администратора → scripts/install-agent-firewall.ps1 ` +
+              `(UDP с ${host}). Без прав админа будет «Отказано в доступе».`,
+            "warn",
+            15000
+          );
+        }
+      })
+      .catch((e) => console.warn("[CC-RTP stats]", e));
+  }, 2000);
+}
+
+/** Нативный запрос Chrome (как для микрофона) — только Notification API. */
+async function requestCallNotifications() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "granted") return;
+  if (Notification.permission === "denied") return;
+  try {
+    await Notification.requestPermission();
+  } catch { /* ignore */ }
+}
+
+function notifyIncomingCall(number, queue) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const n = new Notification("Входящий звонок", {
+      body: `${number || "—"}${queue ? ` · очередь ${queue}` : ""}`,
+      tag: "cc-inbound-call",
+      requireInteraction: true,
+    });
+    n.onclick = () => {
+      window.focus();
+      n.close();
+      unlockAudioPlayback();
+    };
+  } catch { /* ignore */ }
+}
+
+function showUnlockAudioButton() {
+  const b = document.getElementById("btn-unlock-audio");
+  if (b) b.hidden = false;
+}
+
+function hideUnlockAudioButton() {
+  const b = document.getElementById("btn-unlock-audio");
+  if (b) b.hidden = true;
+}
+
+/** Разблокировка autoplay в жесте клика (без сброса srcObject). */
+function unlockAudioPlayback() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx && !window.__ccAudioCtx) {
+      const ctx = new Ctx();
+      window.__ccAudioCtx = ctx;
+      if (ctx.state === "suspended") void ctx.resume();
+    } else if (window.__ccAudioCtx?.state === "suspended") {
+      void window.__ccAudioCtx.resume();
+    }
+  } catch (_) { /* ignore */ }
+  const el = getRemoteAudioEl();
+  if (!el.srcObject) {
+    el.muted = true;
+    const p = el.play();
+    if (p?.then) {
+      p.then(() => {
+        el.pause();
+        el.currentTime = 0;
+        el.muted = false;
+      }).catch(() => { el.muted = false; });
+    } else el.muted = false;
+  }
+  hideUnlockAudioButton();
+}
+
+function getRemoteAudioEl() {
+  if (!remoteAudioEl) {
+    remoteAudioEl = document.getElementById("sip-remote-audio");
+    if (!remoteAudioEl) {
+      remoteAudioEl = document.createElement("audio");
+      remoteAudioEl.id = "sip-remote-audio";
+      document.body.appendChild(remoteAudioEl);
+    }
+    remoteAudioEl.autoplay = true;
+    remoteAudioEl.playsInline = true;
+    remoteAudioEl.volume = 1;
+    remoteAudioEl.muted = false;
+  }
+  return remoteAudioEl;
+}
+
+function resetRemotePlaybackStream() {
+  if (remotePlaybackStream) {
+    remotePlaybackStream.getTracks().forEach((t) => {
+      try { remotePlaybackStream.removeTrack(t); } catch (_) { /* ignore */ }
+    });
+  }
+  remotePlaybackStream = null;
+  const el = getRemoteAudioEl();
+  if (el) el.srcObject = null;
+}
+
+function getOrCreateRemotePlaybackStream() {
+  if (!remotePlaybackStream) {
+    remotePlaybackStream = new MediaStream();
+    getRemoteAudioEl().srcObject = remotePlaybackStream;
+  }
+  return remotePlaybackStream;
+}
+
+function collectInboundAudioTracks(session) {
+  const sdh = session?.sessionDescriptionHandler;
+  const pc = sdh?.peerConnection;
+  const out = [];
+  const remote = sdh?.remoteMediaStream;
+  if (remote?.getAudioTracks) {
+    remote.getAudioTracks().forEach((t) => {
+      if (t.readyState !== "ended") out.push(t);
+    });
+  }
+  if (!out.length && pc) {
+    pc.getReceivers().forEach((r) => {
+      if (r.track?.kind === "audio" && r.track.readyState !== "ended") out.push(r.track);
+    });
+  }
+  return out;
+}
+
+/** SIP.js attach-media: один srcObject, треки добавляем в bucket. */
+async function syncRemoteAudioFromSession(session, { notify = false } = {}) {
+  const tracks = collectInboundAudioTracks(session);
+  if (!tracks.length) return false;
+
+  const bucket = getOrCreateRemotePlaybackStream();
+  bucket.getAudioTracks().forEach((t) => {
+    if (!tracks.includes(t)) {
+      try { bucket.removeTrack(t); } catch (_) { /* ignore */ }
+    }
+  });
+  tracks.forEach((t) => {
+    if (!bucket.getTracks().includes(t)) {
+      try { bucket.addTrack(t); } catch (_) { /* ignore */ }
+    }
+  });
+
+  const el = getRemoteAudioEl();
+  el.muted = false;
+  try {
+    await el.play();
+    hideUnlockAudioButton();
+    console.info("remote audio: playing", tracks.length, "track(s)");
+    return true;
+  } catch (e) {
+    if (e?.name !== "AbortError") {
+      console.warn("remote audio play", e);
+      showUnlockAudioButton();
+      if (notify) toast("Нажмите «🔊 Звук» на панели", "warn", 6000);
+    }
+    return false;
+  }
+}
+
+function queueSyncRemoteAudio(session, notify = false) {
+  clearTimeout(remoteSyncTimer);
+  return new Promise((resolve) => {
+    remoteSyncTimer = setTimeout(async () => {
+      resolve(await syncRemoteAudioFromSession(session, { notify }));
+    }, 50);
+  });
+}
+
+async function waitForRemoteAudio(session, notify = false, timeoutMs = 12000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await queueSyncRemoteAudio(session, notify)) return true;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return false;
+}
+
+function waitForSessionEstablished(session, SessionState, timeoutMs = 20000) {
+  if (session.state === SessionState.Established) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("SIP session establish timeout")), timeoutMs);
+    session.stateChange.addListener((s) => {
+      if (s === SessionState.Established) {
+        clearTimeout(timer);
+        resolve();
+      } else if (s === SessionState.Terminated) {
+        clearTimeout(timer);
+        reject(new Error("call ended before establish"));
+      }
+    });
+  });
+}
+
+function setCallMuted(muted) {
+  const pc = state.sipCall?.sessionDescriptionHandler?.peerConnection;
+  pc?.getSenders().forEach((s) => {
+    if (s.track?.kind === "audio") s.track.enabled = !muted;
+  });
+}
+
 // ---- Call actions ----
-function onAnswer() {
-  if (!state.call) return;
-  if (state.sipCall?.accept) state.sipCall.accept();
-  state.call.phase = "answered";
-  state.call.startedAt = Date.now();
-  setAgentState("BUSY");
-  renderCallInfo();
+async function onAnswer() {
+  if (!state.call || !state.sipCall) return;
+  if (warnInsecureMicrophone()) return;
+  // Только синхронный unlock в клике — await getUserMedia() ломает autoplay для play().
+  unlockAudioPlayback();
+  try {
+    await state.sipCall.accept({
+      sessionDescriptionHandlerOptions: {
+        constraints: audioConstraints,
+      },
+    });
+    if (SipSessionState && state.sipCall.state !== SipSessionState.Established) {
+      await waitForSessionEstablished(state.sipCall, SipSessionState, 20000);
+    }
+    startWebRtcStatsLogger(state.sipCall, "answered");
+    const ok = await waitForRemoteAudio(state.sipCall, true, 12000);
+    if (!ok) {
+      toast("Нет RTP в браузер — F12→[CC-RTP], проверьте UDP 10000-20000 и WSS :8089", "warn", 10000);
+    }
+    state.call.phase = "answered";
+    state.call.startedAt = Date.now();
+    setAgentState("BUSY");
+    renderCallInfo();
+  } catch (err) {
+    console.error("accept failed", err);
+    const msg = err?.message || String(err);
+    if (/insecure contexts/i.test(msg)) {
+      toast(`Откройте Agent по HTTPS: ${agentHttpsUrl()}`, "err", 15000);
+    } else {
+      toast(`Не удалось ответить: ${msg}`, "err", 10000);
+    }
+  }
 }
 function onHangup() {
   if (!state.call) return;
@@ -439,8 +1029,17 @@ function onHangup() {
     rec: true,
     profile: c.profile,
   });
+  const handled = c.profile?.msisdn || c.number;
+  const lastSr = state.serviceRequests.find(r => r.handled === handled && r.content);
+  if (lastSr) $("#wrap-note").value = lastSr.content.slice(0, 300);
+  stopWebRtcStatsLogger();
+  releaseAgentMicrophone();
+  clearTimeout(remoteSyncTimer);
+  resetRemotePlaybackStream();
   state.call = null;
   state.sipCall = null;
+  const ra = getRemoteAudioEl();
+  if (ra) ra.pause?.();
   renderCallInfo();
   setAgentState("AFTERCALL");
   $("#wrap-timer").textContent = "10s";
@@ -448,6 +1047,7 @@ function onHangup() {
 function onMute() {
   if (!state.call) return;
   state.call.muted = !state.call.muted;
+  setCallMuted(state.call.muted);
   toast(state.call.muted ? "Микрофон выключен" : "Микрофон включён", "info", 1200);
 }
 function onHold() {
@@ -473,20 +1073,12 @@ function sendDtmf(seq) {
   }
   toast(`DTMF: ${seq}`, "info", 1200);
 }
-function startOutbound(num) {
-  if (state.config.demo) {
-    state.call = {
-      dir: "out", number: num, calling: state.config.user, called: num,
-      phase: "answered", startedAt: Date.now(),
-      sn: nextSN(), queue: null, group: "Outbound",
-      profile: syntheticProfile(num),
-    };
-    fillCustomer(state.call.profile);
-    setAgentState("BUSY");
-    renderCallInfo();
-    return;
-  }
-  toast("Исходящий через SIP.js будет реализован при подключении к Asterisk", "warn");
+async function startOutbound(num) {
+  try {
+    const res = await apiGet(`/subscribers/${encodeURIComponent(num)}`);
+    if (res.profile) fillCustomer(res.profile);
+  } catch { /* карточка опциональна */ }
+  toast("Исходящий вызов — через SIP к Asterisk (WSS)", "info");
 }
 
 function nextSN() {
@@ -494,47 +1086,120 @@ function nextSN() {
   return base.slice(0, 15);
 }
 
-function syntheticProfile(msisdn) {
-  const names = ["Тагоев Сорбон Абду-карарович", "Иван Петров", "Ситора Каримова", "Daler Nazarov"];
-  const tariffs = ["Длиен412","R3045","R7000","R2010"];
-  const cats = ["Физическое лицо","Юридическое лицо","VIP","Корпоративный"];
-  const groups = ["Tajikskaya gruppa", "Russian group", "VIP group"];
-  return {
-    msisdn,
-    name: names[Math.floor(Math.random()*names.length)],
-    tariff: tariffs[Math.floor(Math.random()*tariffs.length)],
-    imsi: "4365" + Math.floor(1000000000 + Math.random()*8999999999),
-    pin1: "0000", puk1: "12345678", pin2: "0000", puk2: "87654321",
-    core_balance: (Math.random()*200).toFixed(2),
-    balance: (Math.random()*200).toFixed(2),
-    category: cats[Math.floor(Math.random()*cats.length)],
-    customer_code: (1 + Math.random()).toFixed(7),
-    account_code: String(400000 + Math.floor(Math.random()*100000)),
-    icc: "8999225" + Math.floor(1000000000 + Math.random()*8999999999),
-    group: groups[Math.floor(Math.random()*groups.length)],
-    requests: [],
-    tickets:  [],
-    redirects: [{ from: msisdn, to: "*100*1#", type: "Безусловная", active: false }],
-    products: [
-      { name: "MobiSMS/MMS все направления", active: true, since: "2024-08-12", fee: "2.50 TJS" },
-      { name: "MobiMINUTE внутр.", active: false, since: "2023-12-01", fee: "1.00 TJS" },
-    ],
-  };
+// ---- SIP.js (real) ----
+function scheduleSipReconnect(reason) {
+  if (sipReconnectTimer) return;
+  sipConnectAttempt += 1;
+  if (sipConnectAttempt > 8) {
+    toast(`SIP: слишком много попыток (${reason}). Обновите страницу.`, "err", 12000);
+    return;
+  }
+  const delay = Math.min(20000, 2500 * sipConnectAttempt);
+  $("#conn-pill").dataset.c = "warn";
+  $("#conn-text").textContent = `reconnect ${sipConnectAttempt}…`;
+  sipReconnectTimer = setTimeout(() => {
+    sipReconnectTimer = null;
+    startSip();
+  }, delay);
 }
 
-// ---- SIP.js (real) ----
+async function stopSipUa() {
+  if (state.registerer) {
+    try {
+      await state.registerer.unregister();
+    } catch { /* ignore */ }
+    state.registerer = null;
+  }
+  if (state.ua) {
+    try {
+      await state.ua.stop();
+    } catch { /* ignore */ }
+    state.ua = null;
+  }
+}
+
 async function startSip() {
+  if (sipReconnectTimer) {
+    clearTimeout(sipReconnectTimer);
+    sipReconnectTimer = null;
+  }
+  await stopSipUa();
   $("#conn-pill").dataset.c = "warn";
   $("#conn-text").textContent = "connecting…";
+  if (!state.config.pass) {
+    $("#conn-pill").dataset.c = "err";
+    $("#conn-text").textContent = "error";
+    toast("Нет SIP-пароля — выйдите и войдите снова (пароль из админки)", "err", 8000);
+    return;
+  }
+  let wss = (state.config.wss || "").trim();
+  if (window.location.protocol === "http:" && wss.startsWith("wss://")) {
+    try {
+      const u = new URL(wss);
+      u.protocol = "ws:";
+      if (!u.port || u.port === "8089") u.port = "8088";
+      wss = u.toString();
+      state.config.wss = wss;
+      saveConfig(state.config);
+    } catch {
+      wss = defaultWssUrl();
+      state.config.wss = wss;
+      saveConfig(state.config);
+    }
+  }
+  if (window.location.protocol === "https:" && wss.startsWith("ws://")) {
+    try {
+      const u = new URL(wss);
+      u.protocol = "wss:";
+      if (!u.port || u.port === "8088") u.port = "8089";
+      wss = u.toString();
+      state.config.wss = wss;
+      saveConfig(state.config);
+    } catch {
+      wss = defaultWssUrl();
+      state.config.wss = wss;
+      saveConfig(state.config);
+    }
+  }
+  if (!wss) {
+    wss = defaultWssUrl();
+    state.config.wss = wss;
+  }
+  const sipTransportOk =
+    (wss.startsWith("wss://") || wss.startsWith("ws://")) && wss.includes("/ws");
+  if (!sipTransportOk) {
+    toast(
+      "Укажите WebSocket SIP: ws://172.16.6.183:8088/ws (HTTP) или wss://172.16.6.183:8089/ws (HTTPS)",
+      "err",
+      9000
+    );
+    return;
+  }
   try {
-    const { UserAgent, Registerer, SessionState } = await import("https://cdn.jsdelivr.net/npm/sip.js@0.21.2/+esm");
+    const { UserAgent, Registerer, SessionState, RegistererState, TransportState } =
+      await import("https://cdn.jsdelivr.net/npm/sip.js@0.21.2/+esm");
+    SipSessionState = SessionState;
     const uri = UserAgent.makeURI(`sip:${state.config.user}@${state.config.domain}`);
     state.ua = new UserAgent({
       uri,
-      transportOptions: { server: state.config.wss },
+      transportOptions: {
+        server: wss,
+        connectionTimeout: 20,
+        keepAliveInterval: 30,
+      },
       authorizationUsername: state.config.user,
       authorizationPassword: state.config.pass,
-      sessionDescriptionHandlerFactoryOptions: { constraints: { audio: true, video: false } },
+      sessionDescriptionHandlerFactoryOptions: {
+        constraints: audioConstraints,
+        peerConnectionConfiguration: buildPeerConnectionConfiguration(
+          resolveTelephonySettings(state.config || {}, await loadTelephonyDefaults())
+        ),
+        peerConnectionDelegate: {
+          ontrack: () => {
+            if (state.sipCall) void queueSyncRemoteAudio(state.sipCall, false);
+          },
+        },
+      },
       delegate: {
         onInvite(invitation) {
           state.sipCall = invitation;
@@ -550,26 +1215,99 @@ async function startSip() {
             profile: parseProfileHeader(invitation.request.getHeader("X-Profile")),
           };
           if (state.call.profile) fillCustomer(state.call.profile);
+          else {
+            const num = state.call.number;
+            apiGet(`/subscribers/${encodeURIComponent(num)}`).then(res => {
+              if (res?.profile) {
+                state.call.profile = res.profile;
+                fillCustomer(res.profile);
+              }
+            }).catch(() => {});
+          }
           renderCallInfo();
-          invitation.stateChange.addListener(s => {
+          notifyIncomingCall(state.call.number, state.call.queue);
+          invitation.stateChange.addListener((s) => {
+            if (s === SessionState.Established) {
+              unlockAudioPlayback();
+              startWebRtcStatsLogger(invitation, "established");
+              void queueSyncRemoteAudio(invitation, false);
+            }
             if (s === SessionState.Terminated) onHangup();
           });
         },
       },
     });
     await state.ua.start();
+    state.ua.transport?.stateChange?.addListener((ts) => {
+      if (ts === TransportState.Disconnected && !state.sipCall) {
+        $("#conn-pill").dataset.c = "err";
+        $("#conn-text").textContent = "disconnected";
+        setAgentState("OFFLINE");
+        scheduleSipReconnect("WebSocket closed");
+      }
+    });
     const registerer = new Registerer(state.ua);
-    await registerer.register();
-    $("#conn-pill").dataset.c = "ok";
-    $("#conn-text").textContent = "registered";
-    setAgentState("READY");
+    state.registerer = registerer;
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("REGISTER timeout 15s")), 15000);
+      const onState = (st) => {
+        if (st === RegistererState.Registered) {
+          clearTimeout(timer);
+          registerer.stateChange.removeListener(onState);
+          resolve();
+        }
+      };
+      registerer.stateChange.addListener(onState);
+      registerer.register({
+        requestDelegate: {
+          onReject: (response) => {
+            clearTimeout(timer);
+            registerer.stateChange.removeListener(onState);
+            const code = response?.message?.statusCode || "?";
+            const reason = response?.message?.reasonPhrase || "reject";
+            reject(new Error(`REGISTER ${code} ${reason}`));
+          },
+        },
+      }).catch((e) => {
+        clearTimeout(timer);
+        registerer.stateChange.removeListener(onState);
+        reject(e);
+      });
+    });
+    const regStatus = await verifyAsteriskRegistration();
+    const registered = regStatus === "ok";
+    const verified = regStatus !== "unverified";
+    $("#conn-pill").dataset.c = registered ? "ok" : "warn";
+    $("#conn-text").textContent = registered
+      ? "registered"
+      : verified ? "no contact" : "unverified";
+    // Браузер уже зарегистрировался по SIP; если AMI-проверку выполнить не удалось,
+    // не выводим агента в OFFLINE из-за сбоя внутреннего API — только при явном "no contact".
+    setAgentState(registered || !verified ? "READY" : "OFFLINE");
+    sipConnectAttempt = 0;
   } catch (err) {
     console.error(err);
     $("#conn-pill").dataset.c = "err";
     $("#conn-text").textContent = "error";
-    toast("Не удалось подключиться к Asterisk WSS, переходим в демо", "warn");
-    state.config.demo = true;
-    startDemo();
+    const host = resolveTelephonySettings(state.config || {}, {}).domain;
+    const detail = err?.message || String(err);
+    const certUrl = state.config?.cert_url || `https://${host}:8089/static/index.html`;
+    if (/example\.local/i.test(wss)) {
+      toast("В WSS указан cc.example.local — обновите страницу (Ctrl+F5), должен быть IP сервера", "err", 12000);
+      return;
+    }
+    let hint = `Не удалось подключиться: ${detail}`;
+    if (/certificate|cert|ssl|SEC_ERROR/i.test(detail)) {
+      hint += `. Примите сертификат: ${certUrl} или используйте ws://…:8088/ws (UI по HTTP).`;
+    } else if (/WebSocket|timeout|REGISTER/i.test(detail)) {
+      hint += `. Проверьте ${wss}, пароль SIP (agent1001), F12→Console.`;
+    } else {
+      hint += `. WSS: ${wss}, SIP ${state.config.user}@${host}.`;
+    }
+    toast(hint, "err", 12000);
+    if (/WebSocket|1006|REGISTER|timeout|closed/i.test(detail)) {
+      scheduleSipReconnect(detail);
+    }
   }
 }
 function parseProfileHeader(raw) {
@@ -577,60 +1315,24 @@ function parseProfileHeader(raw) {
   try { return JSON.parse(raw); } catch { return null; }
 }
 
-// ---- Demo mode ----
-function startDemo() {
-  $("#conn-pill").dataset.c = "ok";
-  $("#conn-text").textContent = "demo";
-  setAgentState("READY");
-  seedHistory();
-  setInterval(() => {
-    for (const q of state.queues) {
-      q.waiting = Math.max(0, q.waiting + (Math.random() < 0.4 ? 1 : -1));
-      q.longest = q.waiting > 0 ? Math.min(180, (q.longest || 0) + 2 + Math.floor(Math.random()*3)) : 0;
-      q.sla = Math.max(0.6, Math.min(1, (q.sla || 0.9) + (Math.random() - 0.5) * 0.05));
-    }
-    renderQueues();
-  }, 2500);
-}
-function simulateIncomingSoon() {
-  if (!state.config?.demo) return;
-  if (state.call) return;
-  setTimeout(() => {
-    if (state.agentState !== "READY") return;
-    const number = ["918441995","985471881","918614129","935123456"][Math.floor(Math.random()*4)];
-    const p = syntheticProfile(number);
-    const queue = ["support","sales","billing","vip"][Math.floor(Math.random()*4)];
-    state.call = {
-      dir: "in", phase: "ringing",
-      number, calling: number, called: "2006",
-      sn: nextSN(), queue, group: p.group, waited: Math.floor(Math.random()*30),
-      profile: p,
-    };
-    fillCustomer(p);
-    renderCallInfo();
-    toast(`Входящий: ${p.name} (${number})`, "info", 4000);
-  }, 4000 + Math.random()*6000);
-}
-
-function seedHistory() {
-  const queues = ["support","sales","billing","vip"];
-  const outcomes = ["answered","answered","answered","answered","missed"];
-  const now = Date.now();
-  for (let i = 0; i < 60; i++) {
-    const t = new Date(now - i * (180000 + Math.random()*240000));
-    const dur = Math.floor(20 + Math.random()*420);
-    const number = "9" + Math.floor(10000000 + Math.random()*89999999);
-    state.history.push({
-      time: t.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"}),
-      date: t,
-      queue: queues[Math.floor(Math.random()*queues.length)],
-      number, dur,
-      outcome: outcomes[Math.floor(Math.random()*outcomes.length)],
-      wrap: ["Решено","Решено","Тикет создан","Эскалация","Перезвонить"][Math.floor(Math.random()*5)],
-      rec: Math.random() < 0.9,
-    });
+/** @returns {Promise<"ok"|"no-contact"|"unverified">} */
+async function verifyAsteriskRegistration() {
+  const ext = state.config?.user || "1001";
+  try {
+    const r = await apiGet(`/ops/sip/registration?ext=${encodeURIComponent(ext)}`);
+    if (r?.ok && r.registered) return "ok";
+    const cert = state.config?.cert_url || `https://${state.config.domain}:8089/static/index.html`;
+    toast(
+      `SIP в браузере есть, Asterisk не видит ${ext} (pjsip show contacts пусто). ` +
+        `Проверьте WSS ${state.config.wss} и сертификат: ${cert}`,
+      "warn",
+      12000
+    );
+    return "no-contact";
+  } catch (e) {
+    console.warn("verifyAsteriskRegistration: AMI-проверку выполнить не удалось", e);
+    return "unverified";
   }
-  state.history.sort((a,b) => b.date - a.date);
 }
 
 // ============================================================
@@ -660,14 +1362,14 @@ function renderFullHistory() {
       <td>${h.number}</td>
       <td>${fmtDuration(h.dur)}</td>
       <td>${h.wrap || "—"}</td>
-      <td><span class="tag ${h.outcome==='answered'?'ok':'warn'}">${h.outcome}</span></td>
+      <td><span class="tag ${h.outcome==='answered'?'ok':h.outcome==='failed'?'err':'warn'}">${h.outcome}</span></td>
       <td>${h.rec ? `<button class="btn ghost" data-rec="${h.number}">▶ Прослушать</button>` : "—"}</td>`;
     tb.appendChild(tr);
   }
   $$("[data-rec]").forEach(b => b.addEventListener("click", () => toast("Доступ к записи логируется в audit_log", "info")));
 }
 $("#fl-apply").addEventListener("click", renderFullHistory);
-$("#fl-export").addEventListener("click", () => toast("CSV сгенерирован (демо)", "ok"));
+$("#fl-export").addEventListener("click", () => toast("Экспорт CSV — в разработке", "info"));
 
 // ============================================================
 // SECTION: База знаний
@@ -772,11 +1474,15 @@ $("#break-stop").addEventListener("click", () => {
 // ============================================================
 async function loadCatalog() {
   try {
-    const r = await fetch("services_catalog.json", { cache: "no-store" });
-    state.catalog = await r.json();
+    const [catR, skDoc] = await Promise.all([
+      fetch("services_catalog.json", { cache: "no-store" }),
+      loadSkillQueues(),
+    ]);
+    state.catalog = catR.ok ? await catR.json() : { version: 0, categories: [], skill_queues: [] };
+    state.catalog.skill_queues = skDoc.skill_queues || [];
   } catch (err) {
     console.error(err);
-    toast("Не удалось загрузить services_catalog.json", "err");
+    toast("Не удалось загрузить каталог", "err");
     state.catalog = { version: 0, categories: [], skill_queues: [] };
   }
 }
@@ -831,10 +1537,12 @@ function exportCatalog() {
 }
 
 // ============================================================
-// Popular Service Type modal
+// Popular Service Type modal + Handle / TT card (screen 2)
 // ============================================================
 let svcActiveCat = null;
 let svcSelected = new Set();
+let ttDraft = null; // { cat, item, index, handleNumber, editingSn? }
+let ttActiveTab = "tasks";
 
 function openServiceModal() {
   const num = $("#cf-handled").value.trim();
@@ -876,22 +1584,242 @@ function renderSvcCats() {
   }
 }
 
+function findCatalogItem(itemId) {
+  for (const c of state.catalog.categories) {
+    const idx = c.items.findIndex(it => it.id === itemId);
+    if (idx >= 0) return { cat: c, item: c.items[idx], index: idx };
+  }
+  return null;
+}
+
+function findCatalogItemByCode(code) {
+  for (const c of state.catalog.categories) {
+    const idx = c.items.findIndex(it => it.code === code);
+    if (idx >= 0) return { cat: c, item: c.items[idx], index: idx };
+  }
+  return null;
+}
+
+function buildTypePath(cat, item, index) {
+  const leaf = item.handle_title || `${index + 1}) ${item.name}`;
+  const parts = [];
+  if (cat.breadcrumb_parent) parts.push(cat.breadcrumb_parent);
+  parts.push(`${cat.name} (выбрать подпункты!!!)`);
+  parts.push(leaf);
+  return parts.join(" -> ");
+}
+
+function openHandleDetail(cat, item, index, { editingSn = null } = {}) {
+  const handleNumber = ($("#svc-handle").textContent || $("#cf-handled").value || "").trim();
+  if (!handleNumber || handleNumber === "—") {
+    toast("Укажите Handle number", "warn");
+    return;
+  }
+  ttDraft = { cat, item, index, handleNumber, editingSn };
+  ttActiveTab = "tasks";
+  $$("#tt-tabs .tt-tab").forEach(t => t.classList.toggle("active", t.dataset.ttTab === "tasks"));
+  const title = item.handle_title || `${index + 1}) ${item.name}`;
+  $("#tt-title").textContent = title;
+  $("#tt-subcode").textContent = `${index + 1}) ${item.name} · код ${item.code}`;
+  $("#tt-type-path").textContent = buildTypePath(cat, item, index);
+  $("#tt-handle").value = handleNumber;
+  $("#tt-call-group").value = state.call?.queue || $("#ci-group").textContent?.trim() || "support";
+  $("#tt-content").value = editingSn
+    ? (state.serviceRequests.find(r => r.sn === editingSn)?.content || "")
+    : "";
+  renderTtTabContent();
+  $("#tt-modal").classList.add("show");
+  $("#tt-content").focus();
+}
+
+function closeHandleDetail(returnToSvc = true) {
+  $("#tt-modal").classList.remove("show");
+  ttDraft = null;
+  if (returnToSvc && $("#svc-handle").textContent) $("#svc-modal").classList.add("show");
+}
+
+function appendHandleLog(sr, action) {
+  if (!sr.handleLog) sr.handleLog = [];
+  sr.handleLog.unshift({
+    time: new Date().toISOString(),
+    action,
+    staff: state.config?.user || ccSession.login,
+    snippet: (sr.content || "").slice(0, 120),
+  });
+}
+
+function renderTtTabContent() {
+  if (!ttDraft) return;
+  const { handleNumber, item } = ttDraft;
+  const tab = ttActiveTab;
+  const showLogPanel = tab === "log";
+  $("#tt-log-panel").toggleAttribute("hidden", !showLogPanel);
+  $("#tt-task-tbl").toggleAttribute("hidden", showLogPanel);
+
+  if (showLogPanel) {
+    const sr = ttDraft.editingSn
+      ? state.serviceRequests.find(r => r.sn === ttDraft.editingSn)
+      : state.serviceRequests.find(r => r.handled === handleNumber && r.code === item.code);
+    const lines = (sr?.handleLog || []).map(l =>
+      `[${new Date(l.time).toLocaleString()}] ${l.action} · ${l.staff}\n  ${l.snippet || "—"}`
+    );
+    if (sr?.content) lines.unshift(`Текущий Service content:\n${sr.content}`);
+    $("#tt-log-text").textContent = lines.length ? lines.join("\n\n") : "Лог появится после Save / Submit.";
+    $("#tt-empty").classList.add("hidden");
+    $("#tt-total").classList.add("hidden");
+    return;
+  }
+
+  let rows = state.serviceRequests.filter(sr => sr.handled === handleNumber);
+  if (tab === "same") rows = rows.filter(sr => sr.code === item.code);
+  if (tab === "repeat") {
+    rows = rows.filter(sr => sr.status === "submitted" || sr.progress === "Urge");
+    if (!rows.length) {
+      rows = [{
+        sn: "—", ttSn: "—", handled: handleNumber, time: new Date().toISOString(),
+        type: item.handle_title || item.name, progress: "—", customerName: "—", content: "",
+        status: "draft", code: item.code,
+      }];
+    }
+  }
+  if (tab === "handle-info") {
+    rows = rows.filter(sr => sr.code === item.code && sr.content);
+  }
+
+  const tbody = $("#tt-task-tbl tbody");
+  const head = $("#tt-task-head");
+  const custName = $("#cf-name").value?.trim() || "—";
+  const withContent = tab === "handle-info";
+  head.innerHTML = withContent
+    ? `<tr><th>SN</th><th>Код</th><th>Service content</th><th>Progress</th><th></th></tr>`
+    : `<tr><th style="width:28px"></th><th>Operation</th><th>SN</th><th>TT SN</th><th>Handle number</th><th>Handle time</th><th>Service request type</th><th>Handle progress</th><th>Customer name</th></tr>`;
+
+  tbody.innerHTML = rows.map(sr => {
+    if (withContent) {
+      const preview = (sr.content || "—").slice(0, 80);
+      return `<tr>
+        <td>${sr.sn}</td>
+        <td><span class="kbd">${sr.code}</span></td>
+        <td title="${(sr.content || "").replace(/"/g, "&quot;")}">${preview}${(sr.content || "").length > 80 ? "…" : ""}</td>
+        <td><span class="tag">${sr.progress || sr.status}</span></td>
+        <td><button type="button" class="btn ghost tt-open" data-sn="${sr.sn}">View</button></td>
+      </tr>`;
+    }
+    return `<tr>
+      <td><input type="checkbox" /></td>
+      <td><button type="button" class="btn ghost tt-open" data-sn="${sr.sn}">View</button></td>
+      <td>${sr.sn}</td>
+      <td>${sr.ttSn || "—"}</td>
+      <td>${sr.handled}</td>
+      <td>${new Date(sr.time).toLocaleString()}</td>
+      <td>${sr.type}</td>
+      <td><span class="tag ${sr.status === "submitted" ? "ok" : "warn"}">${sr.progress || sr.status}</span></td>
+      <td>${sr.customerName || custName}</td>
+    </tr>`;
+  }).join("");
+
+  const empty = !rows.length || (tab === "repeat" && rows[0]?.sn === "—");
+  $("#tt-empty").classList.toggle("hidden", !empty);
+  $("#tt-total").classList.toggle("hidden", empty);
+  $("#tt-empty").textContent = tab === "repeat"
+    ? "Sorry, no matching records"
+    : "Нет записей по этому номеру";
+  $("#tt-total").textContent = `Total ${empty ? 0 : rows.length} records`;
+
+  tbody.querySelectorAll(".tt-open").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const sr = state.serviceRequests.find(r => r.sn === btn.dataset.sn);
+      if (!sr) return;
+      const found = findCatalogItemByCode(sr.code);
+      if (found) openHandleDetail(found.cat, found.item, found.index, { editingSn: sr.sn });
+      else {
+        $("#tt-content").value = sr.content || "";
+        toast("Редактирование записи", "info");
+      }
+    });
+  });
+}
+
+function renderTtTaskTable(handleNumber, codeFilter = null) {
+  renderTtTabContent();
+}
+
+function saveHandleRecord(status, progress) {
+  if (!ttDraft) return null;
+  const content = $("#tt-content").value.trim();
+  if (!content) {
+    toast("Заполните Service content — о чём говорили с абонентом", "warn");
+    $("#tt-content").focus();
+    return null;
+  }
+  const { cat, item, index, handleNumber, editingSn } = ttDraft;
+  const typeLabel = item.handle_title || `${index + 1}) ${item.name}`;
+  const now = new Date().toISOString();
+  let sr = editingSn ? state.serviceRequests.find(r => r.sn === editingSn) : null;
+  const patch = {
+    type: typeLabel,
+    code: item.code,
+    category: cat.name,
+    typePath: buildTypePath(cat, item, index),
+    content,
+    callGroup: $("#tt-call-group").value.trim(),
+    queue: $("#tt-call-group").value.trim() || state.call?.queue || "support",
+    time: now,
+    status,
+    progress,
+    customerName: $("#cf-name").value?.trim() || "",
+  };
+  if (sr) {
+    if (!sr.handleLog) sr.handleLog = [];
+    Object.assign(sr, patch);
+  } else {
+    sr = {
+      sn: "SR" + Math.floor(100000 + Math.random() * 899999),
+      ttSn: "TT" + Math.floor(100000 + Math.random() * 899999),
+      staff: state.config?.user || ccSession.login,
+      handled: handleNumber,
+      handleLog: [],
+      ...patch,
+    };
+    state.serviceRequests.unshift(sr);
+  }
+  appendHandleLog(sr, progress);
+  if (status === "submitted" && !ttDraft.editingSn) {
+    const lastSr = state.serviceRequests.find(r => r.sn === sr.sn);
+    if (lastSr) $("#wrap-note").value = content.slice(0, 200);
+  }
+  renderSRTabs();
+  renderTtTabContent();
+  return sr;
+}
+
 function renderSvcItems(cat, q = "") {
   const host = $("#svc-items"); host.innerHTML = "";
   if (!cat) return;
   cat.items.forEach((it, i) => {
     if (q && !(it.name.toLowerCase().includes(q) || it.code.toLowerCase().includes(q))) return;
-    const row = document.createElement("label");
+    const row = document.createElement("div");
     row.className = "item-row";
     const checked = svcSelected.has(it.id) ? "checked" : "";
     row.innerHTML = `
       <input type="checkbox" data-id="${it.id}" ${checked}/>
-      <div>
-        <span>${i+1}) ${it.name}</span>
+      <div class="item-body">
+        <span class="name">${i + 1}) ${it.name}</span>
         <span class="code">${it.code}</span>
       </div>`;
-    row.querySelector("input").addEventListener("change", e => {
-      if (e.target.checked) svcSelected.add(it.id); else svcSelected.delete(it.id);
+    const cb = row.querySelector("input");
+    cb.addEventListener("click", e => e.stopPropagation());
+    cb.addEventListener("change", e => {
+      if (e.target.checked) svcSelected.add(it.id);
+      else svcSelected.delete(it.id);
+    });
+    row.querySelector(".item-body").addEventListener("click", () => {
+      openHandleDetail(cat, it, i);
+      $("#svc-modal").classList.remove("show");
+    });
+    row.addEventListener("dblclick", () => {
+      openHandleDetail(cat, it, i);
+      $("#svc-modal").classList.remove("show");
     });
     host.appendChild(row);
   });
@@ -901,33 +1829,81 @@ function renderSvcItems(cat, q = "") {
 }
 
 $("#svc-fill").addEventListener("click", () => {
-  if (!svcSelected.size) { toast("Выберите хотя бы один пункт", "warn"); return; }
-  const handled = $("#svc-handle").textContent;
-  let added = 0;
-  for (const c of state.catalog.categories) {
-    for (const it of c.items) {
-      if (!svcSelected.has(it.id)) continue;
-      added++;
-      state.serviceRequests.unshift({
-        sn: "SR" + Math.floor(100000 + Math.random()*899999),
-        type: it.name,
-        code: it.code,
-        category: c.name,
-        time: new Date().toISOString(),
-        queue: state.call?.queue || "support",
-        staff: state.config.user,
-        status: "open",
-        handled,
-      });
-    }
+  if (!svcSelected.size) { toast("Выберите подпункт или кликните по строке", "warn"); return; }
+  const found = findCatalogItem([...svcSelected][0]);
+  if (!found) { toast("Пункт не найден", "err"); return; }
+  if (svcSelected.size > 1) {
+    toast(`Открыта карточка для первого пункта (выбрано: ${svcSelected.size})`, "info");
   }
-  renderSRTabs();
+  openHandleDetail(found.cat, found.item, found.index);
   $("#svc-modal").classList.remove("show");
-  toast(`Создано Service Requests: ${added}. Они будут отправлены в /api/tickets`, "ok");
+});
+
+$("#tt-close-x").addEventListener("click", () => closeHandleDetail(true));
+$("#tt-cancel").addEventListener("click", () => closeHandleDetail(true));
+$("#tt-modal").addEventListener("click", e => {
+  if (e.target.id === "tt-modal") closeHandleDetail(true);
+});
+$("#tt-submit").addEventListener("click", () => {
+  const sr = saveHandleRecord("submitted", "Submitted");
+  if (!sr) return;
+  toast(`Обращение ${sr.sn} отправлено`, "ok");
+  closeHandleDetail(false);
+  $("#svc-modal").classList.remove("show");
+});
+$("#tt-save").addEventListener("click", () => {
+  const sr = saveHandleRecord("draft", "Saved");
+  if (sr) toast(`Черновик ${sr.sn} сохранён`, "ok");
+});
+$("#tt-prehandle").addEventListener("click", () => {
+  const sr = saveHandleRecord("prehandle", "Prehandle");
+  if (sr) toast("Prehandle сохранён", "ok");
+});
+$("#tt-direct").addEventListener("click", () => {
+  const sr = saveHandleRecord("closed", "Direct Reply");
+  if (!sr) return;
+  toast("Direct Reply — обращение закрыто", "ok");
+  closeHandleDetail(false);
+  $("#svc-modal").classList.remove("show");
+});
+$("#tt-modify").addEventListener("click", () => {
+  $("#tt-content").focus();
+  toast("Редактирование Service content", "info");
+});
+$("#tt-import").addEventListener("click", () => toast("Import — фаза 2", "info"));
+$("#tt-export-row").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({
+    handle: $("#tt-handle").value,
+    callGroup: $("#tt-call-group").value,
+    content: $("#tt-content").value,
+    typePath: $("#tt-type-path").textContent,
+  }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "handle-export.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$("#tt-back-svc").addEventListener("click", () => {
+  closeHandleDetail(true);
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if ($("#tt-modal").classList.contains("show")) closeHandleDetail(true);
+});
+$$("#tt-tabs .tt-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    $$("#tt-tabs .tt-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    ttActiveTab = tab.dataset.ttTab;
+    if (["same", "repeat"].includes(ttActiveTab)) {
+      toast(`${tab.textContent} — данные из CRM/TT при подключении`, "info", 2000);
+    }
+    renderTtTabContent();
+  });
 });
 
 // ---- Boot ----
-renderQueues();
 renderCallInfo();
 async function bootAgent() {
   if (!hasPermission(ccSession, "workspace.view") && ccSession.role !== "admin") {
@@ -935,21 +1911,6 @@ async function bootAgent() {
     location.href = "../index.html";
     return;
   }
-  const saved = loadConfig() || {};
-  const demo = saved.demo ?? true;
-  if (demo) {
-    state.config = buildConfig(true);
-    saveConfig(state.config);
-    hideSipModal();
-    $("#who").textContent = `${ccSession.fullName} · ${ccSession.login}`;
-    if (ccSession.role === "admin") {
-      $("#btn-admin").hidden = false;
-      $("#btn-admin").onclick = () => { location.href = "../admin/"; };
-    }
-    await loadCatalog();
-    await enterShift();
-  } else {
-    showSipModal();
-  }
+  showSipModal();
 }
 bootAgent();
