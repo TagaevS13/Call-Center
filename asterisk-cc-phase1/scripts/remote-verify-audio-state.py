@@ -21,7 +21,7 @@ def main() -> None:
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     c.connect(HOST, username=USER, password=PASSWORD, timeout=30)
     sections = [
-        ("GSM route", "ip r | grep 10.1.5; echo '---'; ip route get 10.1.5.75"),
+        ("GSM route", "ip r | grep 10.1.5"),
         ("cc-gsm-routes.service", "systemctl is-active cc-gsm-routes.service 2>&1; ls -la /etc/systemd/system/cc-gsm-routes.service 2>&1"),
         (".env GSM", "grep -E 'SIP_PROVIDER|GSM_ROUTE|PUBLIC_DOMAIN' .env 2>/dev/null || echo no-env"),
         ("rtp.conf on disk", "grep -E 'external_media|localnet|10.1.5' asterisk/etc/rtp.conf | head -20"),

@@ -787,8 +787,12 @@ def handle_api(handler) -> bool:
                     f"https://{host}:9443/agent/",
                     f"https://{host}:8089/static/index.html",
                 ],
-                "sip_provider_signal": os.environ.get("SIP_PROVIDER_SIGNAL", "10.1.5.10"),
-                "sip_provider_media": os.environ.get("SIP_PROVIDER_MEDIA", "10.1.5.75"),
+                "sip_provider_signal": os.environ.get(
+                    "SIP_PROVIDER_SIGNAL_NET", "10.1.5.8/29"
+                ),
+                "sip_provider_media": os.environ.get(
+                    "SIP_PROVIDER_MEDIA_NET", "10.1.5.64/27"
+                ),
                 "sip_provider_signal_net": os.environ.get(
                     "SIP_PROVIDER_SIGNAL_NET", "10.1.5.8/29"
                 ),

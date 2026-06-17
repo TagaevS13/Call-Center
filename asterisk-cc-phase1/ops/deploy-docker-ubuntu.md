@@ -37,7 +37,7 @@ docker compose version   # нужен v2+
 
 ### 1b. Маршруты к GSM (10.1.5.0/24 + 10.1.5.8/29 + 10.1.5.64/27)
 
-На **project** через **enp13s4f0** → **172.16.4.1** (не `10.1.5.10/32` и не `10.1.5.75/32`):
+На **project** через **enp13s4f0** → **172.16.4.1** (подсети `/29` и `/27`, не `/32` на хост):
 
 ```bash
 cd /opt/call-center/asterisk-cc-phase1
@@ -45,7 +45,7 @@ sudo bash scripts/apply-gsm-routes.sh
 sudo systemctl enable --now cc-gsm-routes.service
 ```
 
-Проверка: `ip route get 10.1.5.10` и `ip route get 10.1.5.75` → `via 172.16.4.1 dev enp13s4f0`.  
+Проверка: `ip r | grep 10.1.5` → `10.1.5.8/29`, `10.1.5.64/27` via `172.16.4.1 dev enp13s4f0`.  
 Подробно: [ops/gsm-network-routes.md](gsm-network-routes.md).
 
 ---
@@ -109,8 +109,6 @@ GRAFANA_ADMIN_PASSWORD=<сильный-пароль>
 PUBLIC_DOMAIN=172.16.6.183
 
 # GSM (SoftX / UMG) — подсети для маршрутов и PJSIP identify (не /32)
-SIP_PROVIDER_SIGNAL=10.1.5.10
-SIP_PROVIDER_MEDIA=10.1.5.75
 SIP_PROVIDER_SIGNAL_NET=10.1.5.8/29
 SIP_PROVIDER_MEDIA_NET=10.1.5.64/27
 GSM_ROUTE_NET=10.1.5.0/24

@@ -8,8 +8,8 @@
 
 ```mermaid
 flowchart LR
-  GSM["GSM UMG 10.1.5.75 (RTP)"]
-  SIG["GSM SoftX 10.1.5.10 (SIP)"]
+  GSM["GSM UMG 10.1.5.64/27 (напр. .72/.75)"]
+  SIG["GSM SoftX 10.1.5.8/29"]
   subgraph PBX["PBX project 172.16.6.183"]
     NIC2["enp13s4f0 172.16.4.19 (GSM)"]
     NIC1["enp6s0f0 172.16.6.183 (агенты/TURN)"]
@@ -30,7 +30,7 @@ flowchart LR
 
 | Плечо | Симптом one-way | Где чинить |
 | ----- | --------------- | ---------- |
-| 1. GSM -> Asterisk | агент **не слышит абонента**; в логах нет `Got RTP ... 10.1.5` | маршрут/`rp_filter` на хосте + **ACL на стороне GSM/SBC** |
+| 1. GSM -> Asterisk | агент **не слышит абонента**; в логах нет `Got RTP ... 10.1.5` (любой хост в `10.1.5.64/27`) | маршрут/`rp_filter` на хосте + **UMG/SBC не шлёт RTP на 172.16.4.19** |
 | 1. Asterisk -> GSM | абонент **не слышит агента** | `media_address`/маршрут к `10.1.5.64/27` |
 | 2. Asterisk -> браузер | в браузере `in=NO-inbound-rtp` | firewall ПК агента + **межсетевой ACL `172.16.6.131`** |
 | 2. браузер -> Asterisk | в логах нет `Got RTP ... 192.168.1.x` | микрофон/HTTPS-контекст браузера |
@@ -84,8 +84,9 @@ docker compose exec -T asterisk-a sh -lc '
 ```bash
 cd /opt/call-center/asterisk-cc-phase1
 sudo bash scripts/apply-gsm-routes.sh
-ip route get 10.1.5.75        # ждём: ... dev enp13s4f0 src 172.16.4.19
-ip route get 10.1.5.10        # тот же интерфейс/src
+# Маршруты — по ПОДСЕТЯМ (не /32): 10.1.5.0/24, 10.1.5.8/29, 10.1.5.64/27 via enp13s4f0
+ip r | grep 10.1.5
+bash scripts/verify-gsm-config.sh
 cat /proc/sys/net/ipv4/conf/enp13s4f0/rp_filter   # 0 или 2 (loose); 1 (strict) может резать ассиметрию
 ```
 
@@ -109,10 +110,16 @@ grep "Got  RTP packet from    10.1.5" /var/log/asterisk/full | tail
 ### Эскалация на сторону GSM/SBC (если только Out)
 
 Запрос их сисадмину (SoftX/UMG):
-> Разрешить **входящий RTP/UDP** от нашего PBX обратно к нам:
-> источник `172.16.4.19` (наша сеть), назначение медиа-подсеть `10.1.5.64/27` (UMG `10.1.5.75`),
-> и **обратный поток** UMG -> `172.16.4.19`, UDP, диапазон RTP-портов согласно SDP (обычно 10000–20000).
-> Симметричный RTP включён (`rtp_symmetric=yes`). Кодек только G.711 (PCMA/PCMU).
+> Разрешить и **фактически отправлять** входящий RTP/UDP с медиа-подсети **`10.1.5.64/27`**
+> (любой хост UMG внутри **`10.1.5.64/27`** — в SDP `c=` бывает разный IP, не один фиксированный)
+> на наш PBX **`172.16.4.19`**, UDP, порты RTP согласно SDP (обычно 10000–20000).
+> Сейчас мы шлём RTP в вашу сторону (симметричный RTP, `rtp_symmetric=yes`), но обратного потока
+> **`10.1.5.x → 172.16.4.19`** на интерфейсе `enp13s4f0` нет (tcpdump: только Out).
+> Кодек согласован: G.711 (PCMA/PCMU).
+>
+> Дополнительно: в INVITE приходит `Supported: precondition` и `a=des:qos mandatory local sendrecv`.
+> Asterisk не поддерживает 3GPP preconditions. Просьба **отключить mandatory preconditions** на
+> транке к `172.16.4.19` или настроить UMG отправлять RTP без ожидания precondition latch.
 
 ---
 

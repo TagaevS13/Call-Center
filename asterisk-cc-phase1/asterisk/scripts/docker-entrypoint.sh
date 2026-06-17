@@ -33,9 +33,6 @@ ICE_EXTRA="${CONF_DIR}/rtp_ice_extra.conf"
   echo "[ice_host_candidates]"
   echo "172.16.4.19 => ${PUBLIC_IP}"
   echo "172.16.6.183 => ${PUBLIC_IP}"
-  echo "10.1.5.10 => ${PUBLIC_IP}"
-  echo "10.1.5.75 => ${PUBLIC_IP}"
-  echo "; GSM media/signaling bind ${GSM_MEDIA_IP} (agents ICE → ${PUBLIC_IP})"
   echo "; GSM subnets: signal ${SIP_PROVIDER_SIGNAL_NET:-10.1.5.8/29} media ${SIP_PROVIDER_MEDIA_NET:-10.1.5.64/27}"
   for ip in $(hostname -I 2>/dev/null); do
     [[ -z "${ip}" || "${ip}" == "${PUBLIC_IP}" ]] && continue
@@ -85,8 +82,6 @@ for pattern in cdr_pgsql.conf cel_pgsql.conf manager.conf ari.conf pjsip_provide
   src="${CONF_DIR}/${pattern}"
   if [[ -f "${src}" ]]; then
     sed \
-      -e "s|\${SIP_PROVIDER_SIGNAL}|${SIP_PROVIDER_SIGNAL:-10.1.5.10}|g" \
-      -e "s|\${SIP_PROVIDER_MEDIA}|${SIP_PROVIDER_MEDIA:-10.1.5.75}|g" \
       -e "s|\${SIP_PROVIDER_SIGNAL_NET}|${SIP_PROVIDER_SIGNAL_NET:-10.1.5.8/29}|g" \
       -e "s|\${SIP_PROVIDER_MEDIA_NET}|${SIP_PROVIDER_MEDIA_NET:-10.1.5.64/27}|g" \
       -e "s|\${GSM_MEDIA_ADDRESS}|${GSM_MEDIA_IP}|g" \

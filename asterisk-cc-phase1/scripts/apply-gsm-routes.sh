@@ -19,7 +19,7 @@ if ! ip link show "$GSM_DEV" &>/dev/null; then
   exit 1
 fi
 
-# Убрать устаревшие /32 (GSM просил заменить на /29 и /27)
+# Убрать устаревшие /32 (GSM: только подсети /29 и /27)
 for stale in 10.1.5.10/32 10.1.5.75/32; do
   while ip route del "$stale" 2>/dev/null; do :; done
 done
@@ -36,5 +36,4 @@ sysctl -w net.ipv4.conf."$GSM_DEV".rp_filter=2 >/dev/null 2>&1 || true
 echo "OK gsm:    $GSM_NET via $GSM_VIA dev $GSM_DEV"
 echo "OK signal: $GSM_SIGNAL_NET via $GSM_VIA dev $GSM_DEV"
 echo "OK media:  $GSM_MEDIA_NET via $GSM_VIA dev $GSM_DEV"
-ip route get 10.1.5.10 from 172.16.4.19 2>/dev/null || ip route get 10.1.5.10
-ip route get 10.1.5.75 from 172.16.4.19 2>/dev/null || ip route get 10.1.5.75
+ip r | grep -E '10\.1\.5\.(8/29|64/27|0/24)' || true

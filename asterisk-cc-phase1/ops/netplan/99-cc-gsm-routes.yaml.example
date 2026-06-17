@@ -1,6 +1,6 @@
 # GSM static routes on project (enp13s4f0 → gateway 172.16.4.1)
-#   signal 10.1.5.8/29  (вместо 10.1.5.10/32)
-#   media  10.1.5.64/27 (вместо 10.1.5.75/32)
+#   signal 10.1.5.8/29
+#   media  10.1.5.64/27
 
 network:
   version: 2

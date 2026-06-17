@@ -6,7 +6,6 @@
 # маршрут GSM (project, два NIC)
 ip r | grep 10.1.5   # expect /24, /29, /27 — not /32
 bash scripts/verify-gsm-config.sh
-ip route get 10.1.5.75
 # на каждой ноде Asterisk
 asterisk -rx "core show channels count"
 asterisk -rx "queue show"

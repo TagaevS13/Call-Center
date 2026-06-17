@@ -15,8 +15,6 @@ set_kv() {
 
 [[ -f "$ENV_FILE" ]] || cp .env.example "$ENV_FILE" 2>/dev/null || touch "$ENV_FILE"
 
-set_kv SIP_PROVIDER_SIGNAL 10.1.5.10
-set_kv SIP_PROVIDER_MEDIA 10.1.5.75
 set_kv SIP_PROVIDER_SIGNAL_NET 10.1.5.8/29
 set_kv SIP_PROVIDER_MEDIA_NET 10.1.5.64/27
 set_kv GSM_ROUTE_NET 10.1.5.0/24
@@ -24,6 +22,11 @@ set_kv GSM_ROUTE_SIGNAL_NET 10.1.5.8/29
 set_kv GSM_ROUTE_MEDIA_NET 10.1.5.64/27
 set_kv GSM_ROUTE_VIA 172.16.4.1
 set_kv GSM_ROUTE_DEV enp13s4f0
+
+# Удалить устаревшие переменные с одиночными IP (заменены на *_NET)
+for legacy in SIP_PROVIDER_SIGNAL SIP_PROVIDER_MEDIA; do
+  sed -i "/^${legacy}=/d" "$ENV_FILE" 2>/dev/null || true
+done
 
 echo "Updated $ENV_FILE (GSM subnets)"
 grep -E '^SIP_PROVIDER_|^GSM_ROUTE_' "$ENV_FILE"

@@ -19,7 +19,7 @@ if ip r | grep -q '10.1.5.0/24'; then ok "route 10.1.5.0/24"; else fail "missing
 if ip r | grep -E '10\.1\.5\.(10|75)/32'; then
   fail "legacy /32 routes still present"
 else
-  ok "no 10.1.5.10/32 or 10.1.5.75/32 routes"
+  ok "no legacy GSM /32 routes"
 fi
 
 echo ""

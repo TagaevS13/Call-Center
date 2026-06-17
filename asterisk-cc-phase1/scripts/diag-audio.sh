@@ -2,18 +2,17 @@
 # diag-audio.sh — за один прогон во время тестового звонка локализует виновное плечо RTP.
 #
 # Плечи:
-#   GSM -> Asterisk : входящий RTP с 10.1.5.75 (media GSM). Нет "Got RTP ... 10.1.5" -> вход GSM.
-#   Asterisk -> агент: исходящий RTP на 192.168.x. Нет "Got RTP ... 192.168" + TxPkt растёт,
-#                      но у агента in=NO-inbound-rtp -> режет firewall (outbound 3044), см. runbook.
+#   GSM -> Asterisk : входящий RTP с любого 10.1.5.x (медиа-подсеть 10.1.5.64/27). Нет "Got RTP
+#                     ... 10.1.5" -> UMG не шлёт медиа на 172.16.4.19.
+#   Asterisk -> агент: исходящий RTP на 192.168.x ...
 #
-# Запуск НА СЕРВЕРЕ во время активного звонка:
-#   ./scripts/diag-audio.sh            # один снимок
-#   ./scripts/diag-audio.sh -w 8       # снять channelstats дважды с паузой 8с (видно прирост Rx/Tx)
+# Маршруты GSM (не /32!): 10.1.5.0/24, 10.1.5.8/29, 10.1.5.64/27 via 172.16.4.1 dev enp13s4f0.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-GSM_MEDIA="${SIP_PROVIDER_MEDIA:-10.1.5.75}"
+GSM_SIGNAL_NET="${SIP_PROVIDER_SIGNAL_NET:-10.1.5.8/29}"
 GSM_NET="${SIP_PROVIDER_MEDIA_NET:-10.1.5.64/27}"
+GSM_ROUTE_NET="${GSM_ROUTE_NET:-10.1.5.0/24}"
 AGENT_NET="${AGENT_NET:-192.168}"
 GSM_IFACE="${GSM_IFACE:-enp13s4f0}"
 AGENT_IFACE="${AGENT_IFACE:-enp6s0f0}"
@@ -24,7 +23,6 @@ while getopts "w:" opt; do case "$opt" in w) WATCH="$OPTARG";; *) ;; esac; done
 C0='\033[0m'; CB='\033[1m'; CG='\033[0;32m'; CR='\033[0;31m'; CY='\033[0;33m'
 hdr() { echo -e "\n${CB}== $* ==${C0}"; }
 
-# asterisk -rx через docker или хостовый бинарь
 AST() {
   if docker compose ps asterisk-a 2>/dev/null | grep -q Up; then
     docker compose exec -T asterisk-a asterisk -rx "$*" 2>/dev/null || true
@@ -32,7 +30,6 @@ AST() {
     asterisk -rx "$*" 2>/dev/null || true
   fi
 }
-# grep по логу (в контейнере или на хосте)
 LOGGREP() {
   local pat="$1"
   if docker compose ps asterisk-a 2>/dev/null | grep -q Up; then
@@ -42,9 +39,18 @@ LOGGREP() {
   fi
 }
 
-hdr "1. Маршрут и rp_filter к GSM media ${GSM_MEDIA}"
-ip route get "$GSM_MEDIA" 2>/dev/null || echo "  (ip route get недоступен)"
-echo "  route table:"; ip r 2>/dev/null | grep -E "10\.1\.5\.|${AGENT_NET}\." | sed 's/^/    /' || true
+hdr "1. Маршруты GSM (подсети, не /32) и rp_filter"
+echo "  сигналинг: ${GSM_SIGNAL_NET}"
+echo "  медиа:     ${GSM_NET}"
+echo "  route table (ожидаем ${GSM_ROUTE_NET}, ${GSM_SIGNAL_NET}, ${GSM_NET} via 172.16.4.1 ${GSM_IFACE}):"
+ip r 2>/dev/null | grep -E "10\.1\.5\.|${AGENT_NET}\." | sed 's/^/    /' || true
+for net in "$GSM_ROUTE_NET" "$GSM_SIGNAL_NET" "$GSM_NET"; do
+  if ip r 2>/dev/null | grep -qF "$net"; then
+    echo -e "    ${CG}OK${C0} route $net"
+  else
+    echo -e "    ${CR}MISSING${C0} route $net"
+  fi
+done
 echo "  rp_filter (0=off, 2=loose рекомендуется для асимм. GSM):"
 for f in all "$GSM_IFACE" "$AGENT_IFACE"; do
   v=$(cat "/proc/sys/net/ipv4/conf/$f/rp_filter" 2>/dev/null || echo "?")
@@ -61,10 +67,10 @@ if [[ "$WATCH" -gt 0 ]]; then
   AST 'pjsip show channelstats'
 fi
 
-hdr "3. Входящий RTP от GSM (${GSM_NET})  [плечо GSM -> Asterisk]"
+hdr "3. Входящий RTP от GSM (любой 10.1.5.x, подсеть ${GSM_NET})  [плечо GSM -> Asterisk]"
 GSM_RTP="$(LOGGREP 'Got +RTP packet from +10\.1\.5')"
-if [[ -n "$GSM_RTP" ]]; then echo -e "${CG}  есть входящий RTP от GSM:${C0}"; echo "$GSM_RTP" | sed 's/^/    /';
-else echo -e "${CR}  НЕТ 'Got RTP ... 10.1.5' -> GSM media не доходит до Asterisk${C0}"; fi
+if [[ -n "$GSM_RTP" ]]; then echo -e "${CG}  есть входящий RTP от GSM (10.1.5.x):${C0}"; echo "$GSM_RTP" | sed 's/^/    /';
+else echo -e "${CR}  НЕТ 'Got RTP ... 10.1.5' -> UMG не шлёт медиа на 172.16.4.19 (см. п.6 tcpdump net ${GSM_NET})${C0}"; fi
 
 hdr "4. Входящий RTP от агента (${AGENT_NET}.x)  [плечо агент -> Asterisk, обычно ОК]"
 AG_RTP="$(LOGGREP "Got +RTP packet from +${AGENT_NET}")"
@@ -73,11 +79,13 @@ else echo -e "${CY}  нет 'Got RTP ... ${AGENT_NET}' (агент не гово
 
 hdr "5. Вердикт"
 echo "  Сопоставьте признаки:"
-echo -e "   - нет п.3 (GSM RTP)            -> ${CB}виноват вход GSM${C0}: редеплой repo-конфига + ACL/SBC на стороне GSM"
-echo -e "   - п.3 есть, TxPkt в п.2 растёт,"
-echo -e "     но у агента in=NO-inbound-rtp -> ${CB}виноват выход на агента${C0}: firewall outbound 3044 (172.16.6.183 -> ${AGENT_NET}.x UDP 10000-20000/3478)"
-echo -e "                                      или A/B AGENT_WEBRTC_MODE=standard (см. ops/audio-two-way-runbook.md)"
+echo -e "   - нет п.3 (GSM RTP с 10.1.5.x)     -> ${CB}виноват вход GSM/UMG${C0}:"
+echo "       provider RxPkt=0 при TxPkt>0; на ${GSM_IFACE} только Out, без In (net ${GSM_NET})."
+echo "       Эскалация: UMG (${GSM_NET}) должен слать RTP на 172.16.4.19."
+echo -e "   - п.3 есть, TxPkt агента в п.2 растёт,"
+echo -e "     но у агента in=NO-inbound-rtp -> ${CB}виноват выход на агента${C0}: firewall outbound 3044"
 
-hdr "6. tcpdump-подсказки (запустить в отдельных терминалах во время звонка)"
-echo "  GSM media:   sudo tcpdump -ni ${GSM_IFACE}  host ${GSM_MEDIA} and udp"
+hdr "6. tcpdump-подсказки (во время звонка, отдельные терминалы)"
+echo "  GSM media:   sudo tcpdump -ni ${GSM_IFACE} net ${GSM_NET} and udp -vv"
+echo "  GSM SIP:     sudo tcpdump -ni ${GSM_IFACE} net ${GSM_SIGNAL_NET} and udp port 5060"
 echo "  агент media: sudo tcpdump -ni ${AGENT_IFACE} net ${AGENT_NET}.0/16 and udp portrange 10000-20000"
