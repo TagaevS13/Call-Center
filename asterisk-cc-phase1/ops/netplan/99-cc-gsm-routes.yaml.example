@@ -1,16 +1,13 @@
-# GSM static routes on project (enp13s4f0 → gateway 172.16.4.1)
-#   signal 10.1.5.8/29
-#   media  10.1.5.64/27
+# GSM static routes on project — split NICs
+#   signal 10.1.5.8/29  → enp13s4f0 / 172.16.4.1
+#   media  10.1.5.64/27 → enp6s0f0 / 172.16.6.131
 
 network:
   version: 2
   routes:
-    - to: 10.1.5.0/24
-      via: 172.16.4.1
-      metric: 100
     - to: 10.1.5.8/29
       via: 172.16.4.1
       metric: 100
     - to: 10.1.5.64/27
-      via: 172.16.4.1
+      via: 172.16.6.131
       metric: 100

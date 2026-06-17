@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Дописать/обновить GSM-переменные в .env (подсети /29 и /27, не /32).
+# Дописать/обновить GSM-переменные в .env (раздельно сигналинг / медиа).
 set -euo pipefail
 
 ENV_FILE="${1:-.env}"
@@ -15,18 +15,21 @@ set_kv() {
 
 [[ -f "$ENV_FILE" ]] || cp .env.example "$ENV_FILE" 2>/dev/null || touch "$ENV_FILE"
 
+set_kv PUBLIC_DOMAIN 172.16.6.183
+set_kv GSM_MEDIA_ADDRESS 172.16.6.183
+set_kv GSM_SIGNAL_ADDRESS 172.16.4.19
 set_kv SIP_PROVIDER_SIGNAL_NET 10.1.5.8/29
 set_kv SIP_PROVIDER_MEDIA_NET 10.1.5.64/27
-set_kv GSM_ROUTE_NET 10.1.5.0/24
 set_kv GSM_ROUTE_SIGNAL_NET 10.1.5.8/29
 set_kv GSM_ROUTE_MEDIA_NET 10.1.5.64/27
-set_kv GSM_ROUTE_VIA 172.16.4.1
-set_kv GSM_ROUTE_DEV enp13s4f0
+set_kv GSM_ROUTE_SIGNAL_VIA 172.16.4.1
+set_kv GSM_ROUTE_SIGNAL_DEV enp13s4f0
+set_kv GSM_ROUTE_MEDIA_VIA 172.16.6.131
+set_kv GSM_ROUTE_MEDIA_DEV enp6s0f0
 
-# Удалить устаревшие переменные с одиночными IP (заменены на *_NET)
-for legacy in SIP_PROVIDER_SIGNAL SIP_PROVIDER_MEDIA; do
+for legacy in SIP_PROVIDER_SIGNAL SIP_PROVIDER_MEDIA GSM_ROUTE_NET GSM_ROUTE_VIA GSM_ROUTE_DEV; do
   sed -i "/^${legacy}=/d" "$ENV_FILE" 2>/dev/null || true
 done
 
-echo "Updated $ENV_FILE (GSM subnets)"
-grep -E '^SIP_PROVIDER_|^GSM_ROUTE_' "$ENV_FILE"
+echo "Updated $ENV_FILE (GSM split: signal .4.19 / media .6.183)"
+grep -E '^PUBLIC_DOMAIN=|^GSM_|^SIP_PROVIDER_' "$ENV_FILE"
