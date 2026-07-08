@@ -1,0 +1,8 @@
+{"domain": "172.16.6.183", "wss": "wss://172.16.6.183:8089/ws", "ws": "ws://172.16.6.183:8088/ws", "cert_url": "https://172.16.6.183:8089/static/index.html", "agent_cert_url": "https://172.16.6.183:9443/agent/", "cert_urls": ["https://172.16.6.183:9443/agent/", "https://172.16.6.183:8089/static/index.html"], "sip_provider_signal": "10.1.5.8/29", "sip_provider_media": "10.1.5.64/27", "sip_provider_signal_net": "10.1.5.8/29", "sip_provider_media_net": "10.1.5.64/27", "turn": true, "turn_urls": ["turn:172.16.6.183:3478?transport=udp"], "turn_user": "ccagent", "turn_password": "ccagentturn", "webrtc_mode": "manual", "bundle_policy": "balanced", "ice_transport_policy": "relay"}---
+webui-1  | WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+webui-1  | 
+webui-1  | [notice] A new release of pip is available: 23.0.1 -> 26.1.2
+webui-1  | [notice] To update, run: pip install --upgrade pip
+webui-1  | HTTP  http://0.0.0.0:9000/  (без микрофона в Agent)
+webui-1  | HTTPS https://0.0.0.0:9443/  Agent: https://172.16.6.183:9443/agent/
+webui-1  | 172.18.0.1 - - [18/Jun/2026 05:47:29] "GET /api/public/telephony HTTP/1.1" 200 -

@@ -1,0 +1,13 @@
+[Unit]
+Description=Asterisk CC config reload watcher
+After=cc-asterisk.service
+Requires=cc-asterisk.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /opt/cc/scripts/cc-reload-watcher.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

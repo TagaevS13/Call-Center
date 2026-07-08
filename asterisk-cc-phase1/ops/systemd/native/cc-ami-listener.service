@@ -1,0 +1,16 @@
+[Unit]
+Description=Asterisk CC AMI state listener
+After=network-online.target cc-asterisk.service
+Wants=cc-asterisk.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/cc/cc.env
+ExecStart=/usr/bin/python3 /opt/cc/scripts/ami_state_listener.py
+Restart=on-failure
+RestartSec=5s
+User=asterisk
+Group=asterisk
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Asterisk CC media debug settings
+After=cc-asterisk.service
+Requires=cc-asterisk.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/cc/cc.env
+ExecStart=/bin/bash /opt/cc/scripts/cc-media-debug-apply.sh
+
+[Install]
+WantedBy=multi-user.target

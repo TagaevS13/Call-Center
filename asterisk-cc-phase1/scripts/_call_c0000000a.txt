@@ -1,0 +1,96 @@
+=== sent_all ===
+[2026-06-18 05:50:45.135] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 024418, ts 000160, len 000160)
+[2026-06-18 05:50:45.154] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 024419, ts 000320, len 000160)
+[2026-06-18 05:50:45.174] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 024420, ts 000480, len 000160)
+[2026-06-18 05:50:45.194] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 024421, ts 000640, len 000160)
+[2026-06-18 05:50:45.214] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 024422, ts 000800, len 000160)
+---
+[2026-06-18 05:51:33.362] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026619, ts 953309832, len 000160)
+[2026-06-18 05:51:33.382] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026620, ts 953309992, len 000160)
+[2026-06-18 05:51:33.402] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026621, ts 953310152, len 000160)
+[2026-06-18 05:51:33.422] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026622, ts 953310312, len 000160)
+[2026-06-18 05:51:33.442] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026623, ts 953310472, len 000160)
+[2026-06-18 05:51:33.462] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026624, ts 953310632, len 000160)
+[2026-06-18 05:51:33.481] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026625, ts 953310792, len 000160)
+[2026-06-18 05:51:33.502] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026626, ts 953310952, len 000160)
+[2026-06-18 05:51:33.522] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026627, ts 953311112, len 000160)
+[2026-06-18 05:51:33.541] VERBOSE[7561][C-0000000a] res_rtp_asterisk.c: Sent RTP packet to      10.1.5.75:35568 (type 08, seq 026628, ts 953311272, len 000160)
+
+=== got_all ===
+---
+[2026-06-18 05:51:07.282] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005246, ts 953101195, len 000170)
+[2026-06-18 05:51:07.402] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005252, ts 953102155, len 000170)
+[2026-06-18 05:51:07.522] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005258, ts 953103115, len 000170)
+[2026-06-18 05:51:07.782] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005271, ts 953105195, len 000170)
+[2026-06-18 05:51:07.902] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005277, ts 953106155, len 000170)
+[2026-06-18 05:51:08.022] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005283, ts 953107115, len 000170)
+[2026-06-18 05:51:08.282] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005296, ts 953109195, len 000170)
+
+=== got_49200 ===
+1416
+
+=== channels ===
+[2026-06-18 05:50:45.100] VERBOSE[7561][C-0000000a] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000c", "CC-TRACE|phase=INBOUND_START|ctx=from-provider|ext=1263|caller=918441995|name=918441995|did=|unique=1781761845.21|linked=|chan=PJSIP/provider-0000000c|peer=|pjsip_ep=provider|remote=10.1.5.10:5061|local=172.16.4.19:5060|rtp_src=|queue=|qstatus=|member=|hangup=0") in new stack
+[2026-06-18 05:50:45.113] VERBOSE[7561][C-0000000a] pbx.c: Executing [s@vdn-1263-direct:4] GotoIf("PJSIP/provider-0000000c", "0?queue-enter,,1") in new stack
+[2026-06-18 05:51:01.835] VERBOSE[7561][C-0000000a] pbx.c: Executing [s@vdn-1263-direct:9] Goto("PJSIP/provider-0000000c", "queue-enter,russkaya,1") in new stack
+[2026-06-18 05:51:01.835] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:1] Gosub("PJSIP/provider-0000000c", "cc-trace,s,1(QUEUE_ENTER,queue-enter,russkaya)") in new stack
+[2026-06-18 05:51:01.836] VERBOSE[7561][C-0000000a] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000c", "CC-TRACE|phase=QUEUE_ENTER|ctx=queue-enter|ext=russkaya|caller=918441995|name=918441995|did=1263|unique=1781761845.21|linked=|chan=PJSIP/provider-0000000c|peer=|pjsip_ep=provider|remote=10.1.5.10:5061|local=172.16.4.19:5060|rtp_src=172.16.6.183:10040|queue=|qstatus=|member=|hangup=0") in new stack
+[2026-06-18 05:51:01.836] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:2] NoOp("PJSIP/provider-0000000c", "Enter queue russkaya") in new stack
+[2026-06-18 05:51:01.836] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:3] Verbose("PJSIP/provider-0000000c", "1,CC-MEDIA queue-enter queue=russkaya caller=918441995 chan=PJSIP/provider-0000000c") in new stack
+[2026-06-18 05:51:01.836] VERBOSE[7561][C-0000000a] app_verbose.c: CC-MEDIA queue-enter queue=russkaya caller=918441995 chan=PJSIP/provider-0000000c
+[2026-06-18 05:51:01.836] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:4] Set("PJSIP/provider-0000000c", "QUEUE_NAME=russkaya") in new stack
+[2026-06-18 05:51:01.836] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:5] AGI("PJSIP/provider-0000000c", "/opt/cc/scripts/check_subscriber_queue.agi,918441995,russkaya") in new stack
+[2026-06-18 05:51:01.850] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:6] GotoIf("PJSIP/provider-0000000c", "0?q-blocked,1") in new stack
+[2026-06-18 05:51:01.850] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:7] Set("PJSIP/provider-0000000c", "__CALL_QUEUE=russkaya") in new stack
+[2026-06-18 05:51:01.851] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:8] Set("PJSIP/provider-0000000c", "__CALL_REC=1781761845.21_russkaya_918441995") in new stack
+[2026-06-18 05:51:01.851] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:9] Set("PJSIP/provider-0000000c", "__CALL_REC_DIR=/var/spool/asterisk/recordings/2026/06/18") in new stack
+[2026-06-18 05:51:01.851] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:10] System("PJSIP/provider-0000000c", "/bin/mkdir -p /var/spool/asterisk/recordings/2026/06/18") in new stack
+[2026-06-18 05:51:01.867] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:11] MixMonitor("PJSIP/provider-0000000c", "/var/spool/asterisk/recordings/2026/06/18/1781761845.21_russkaya_918441995.wav,b(/opt/cc/scripts/mixmonitor_post.sh^1781761845.21^^russkaya^/var/spool/asterisk/recordings/2026/06/18/1781761845.21_russkaya_918441995.wav^918441995^russkaya)") in new stack
+[2026-06-18 05:51:01.867] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:12] GotoIf("PJSIP/provider-0000000c", "0?q-vip,1") in new stack
+[2026-06-18 05:51:01.867] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:13] Set("PJSIP/provider-0000000c", "PJSIP_HEADER(add,X-Queue)=russkaya") in new stack
+[2026-06-18 05:51:01.868] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:14] Set("PJSIP/provider-0000000c", "PJSIP_HEADER(add,X-Group)=russkaya") in new stack
+[2026-06-18 05:51:01.868] VERBOSE[7561][C-0000000a] pbx.c: Executing [russkaya@queue-enter:15] Queue("PJSIP/provider-0000000c", "russkaya,tT,,,300") in new stack
+[2026-06-18 05:51:01.868] DEBUG[7561][C-0000000a] app_queue.c: Queue 'russkaya' Join, Channel 'PJSIP/provider-0000000c', Position '1'
+[2026-06-18 05:51:01.868] DEBUG[7561][C-0000000a] app_queue.c: It's our turn (PJSIP/provider-0000000c).
+[2026-06-18 05:51:01.868] DEBUG[7561][C-0000000a] app_queue.c: PJSIP/provider-0000000c is trying to call a queue member.
+[2026-06-18 05:51:01.868] DEBUG[7561][C-0000000a] app_queue.c: Trying 'PJSIP/1001' with metric 999106
+[2026-06-18 05:51:01.868] DEBUG[7561][C-0000000a] app_queue.c: Add PJSIP/1001 to pending_members
+[2026-06-18 05:51:01.869] DEBUG[7561][C-0000000a] channel.c: Inheriting variable __CALL_QUEUE from PJSIP/provider-0000000c to PJSIP/1001-0000000d.
+[2026-06-18 05:51:01.869] VERBOSE[7561][C-0000000a] app_queue.c: Called PJSIP/1001
+[2026-06-18 05:51:01.885] VERBOSE[7561][C-0000000a] app_queue.c: PJSIP/1001-0000000d is ringing
+[2026-06-18 05:51:05.068] VERBOSE[7561][C-0000000a] app_queue.c: PJSIP/1001-0000000d answered PJSIP/provider-0000000c
+[2026-06-18 05:51:05.069] DEBUG[7561][C-0000000a] app_queue.c: Queue 'russkaya' Leave, Channel 'PJSIP/provider-0000000c'
+
+=== sent_dest ===
+1 10.1.5.75:35568 (type 08, seq 026628, ts 953311272, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026627, ts 953311112, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026626, ts 953310952, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026625, ts 953310792, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026624, ts 953310632, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026623, ts 953310472, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026622, ts 953310312, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026621, ts 953310152, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026620, ts 953309992, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026619, ts 953309832, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026618, ts 953309672, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026617, ts 953309512, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026616, ts 953309352, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026615, ts 953309192, len 000160)
+      1 10.1.5.75:35568 (type 08, seq 026614, ts 953309032, len 000160)
+
+=== got_src ===
+1 172.16.6.183:49200 (type 08, seq 006559, ts 953311275, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006558, ts 953311115, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006557, ts 953310955, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006556, ts 953310795, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006555, ts 953310635, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006554, ts 953310475, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006553, ts 953310315, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006552, ts 953310155, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006551, ts 953309995, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006550, ts 953309835, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006549, ts 953309675, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006548, ts 953309515, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006547, ts 953309355, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006546, ts 953309195, len 000170)
+      1 172.16.6.183:49200 (type 08, seq 006545, ts 953309035, len 000170)

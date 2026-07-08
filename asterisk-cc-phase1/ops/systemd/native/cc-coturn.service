@@ -1,0 +1,13 @@
+[Unit]
+Description=coturn TURN server for WebRTC agents
+After=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/cc/cc.env
+ExecStart=/usr/bin/turnserver -c /etc/turnserver.conf
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

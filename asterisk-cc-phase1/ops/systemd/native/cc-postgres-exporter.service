@@ -1,0 +1,15 @@
+[Unit]
+Description=Prometheus postgres_exporter
+After=network-online.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/cc/cc.env
+Environment=DATA_SOURCE_NAME=postgresql://postgres:changeme@127.0.0.1:5433/asterisk_cc?sslmode=disable
+ExecStart=/usr/local/bin/postgres_exporter --web.listen-address=127.0.0.1:9187
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

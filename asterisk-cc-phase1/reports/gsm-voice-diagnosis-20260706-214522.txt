@@ -1,0 +1,236 @@
+=== GSM voice diagnosis 2026-07-06T21:45:22+05:00 ===
+GSM media: 10.212.154.35 dev enp13s4f1; WebRTC: 172.16.6.183 dev enp6s0f0
+Report: /opt/call-center/asterisk-cc-phase1/reports/gsm-voice-diagnosis-20260706-214522.txt
+
+=== Routes ===
+10.1.5.8/29 via 172.16.4.1 dev enp13s4f0 
+10.1.5.64/27 via 10.212.154.34 dev enp13s4f1 
+10.1.5.10 via 172.16.4.1 dev enp13s4f0 src 172.16.4.19 uid 0 
+    cache 
+10.1.5.72 via 10.212.154.34 dev enp13s4f1 src 10.212.154.35 uid 0 
+    cache 
+
+=== verify-gsm-config ===
+=== GSM split routes ===
+[0;32mOK[0m signal 10.1.5.8/29 via 172.16.4.1 enp13s4f0
+[0;32mOK[0m media 10.1.5.64/27 via 10.212.154.34 enp13s4f1
+[0;32mOK[0m no blanket 10.1.5.0/24
+[0;32mOK[0m no legacy /32
+[0;32mOK[0m signal not via media GW
+[0;32mOK[0m media not via signal GW
+[0;32mOK[0m no stale media via enp6s0f0
+
+=== route get ===
+10.1.5.10 via 172.16.4.1 dev enp13s4f0 src 172.16.4.19 uid 0 
+    cache 
+10.1.5.72 via 10.212.154.34 dev enp13s4f1 src 10.212.154.35 uid 0 
+    cache 
+[0;32mOK[0m 10.1.5.10 via signal path
+[0;32mOK[0m 10.1.5.72 via media path (10.1.5.64/27)
+
+=== .env ===
+PUBLIC_DOMAIN=172.16.6.183
+GSM_MEDIA_ADDRESS=10.212.154.35
+GSM_SIGNAL_ADDRESS=172.16.4.19
+SIP_PROVIDER_SIGNAL_NET=10.1.5.8/29
+SIP_PROVIDER_MEDIA_NET=10.1.5.64/27
+GSM_ROUTE_SIGNAL_NET=10.1.5.8/29
+GSM_ROUTE_MEDIA_NET=10.1.5.64/27
+GSM_ROUTE_SIGNAL_VIA=172.16.4.1
+GSM_ROUTE_SIGNAL_DEV=enp13s4f0
+GSM_ROUTE_MEDIA_VIA=10.212.154.34
+GSM_ROUTE_MEDIA_DEV=enp13s4f1
+GSM_UMG_TEST_IP=10.1.5.72
+[0;32mOK[0m GSM_MEDIA_ADDRESS=10.212.154.35
+[0;32mOK[0m GSM_SIGNAL_ADDRESS=.4.19
+[0;32mOK[0m GSM_ROUTE_SIGNAL_VIA=.4.1
+[0;32mOK[0m GSM_ROUTE_MEDIA_VIA=10.212.154.34
+[0;32mOK[0m GSM_ROUTE_MEDIA_DEV=enp13s4f1
+[0;32mOK[0m GSM_UMG_TEST_IP=10.1.5.72
+
+=== Asterisk PJSIP (native) ===
+[0;32mOK[0m match 10.1.5.8/29 (signal subnet)
+[0;32mOK[0m match 10.1.5.64/27 (media subnet)
+media_address=10.212.154.35
+[0;32mOK[0m media_address=10.212.154.35
+external_media_address=172.16.6.183
+localnet=172.16.0.0/12
+localnet=127.0.0.0/8
+[0;32mOK[0m rtp external_media_address=172.16.6.183
+[0;32mOK[0m no stale 10.0.0.0/8 localnet
+external_media_address=172.16.6.183
+external_media_address=172.16.6.183
+[0;32mOK[0m pjsip external_media_address=172.16.6.183
+[0;32mOK[0m pjsip vars substituted
+
+=== RTP from GSM media subnet (any host in 10.1.5.64/27) ===
+(no RTP from 10.1.5.x in log yet — check during active call)
+
+[0;32mOK[0m GSM config check passed
+
+=== diag-audio (-w 15) ===
+
+[1m== 1. Маршруты GSM (подсети, не /32) и rp_filter ==[0m
+  сигналинг: 10.1.5.8/29
+  медиа:     10.1.5.64/27
+  route table (signal 10.1.5.8/29 via enp13s4f0, media 10.1.5.64/27 via enp13s4f1):
+    10.1.5.8/29 via 172.16.4.1 dev enp13s4f0 
+    10.1.5.64/27 via 10.212.154.34 dev enp13s4f1 
+    [0;32mOK[0m route 10.1.5.8/29
+    [0;32mOK[0m route 10.1.5.64/27
+  rp_filter (0=off, 2=loose рекомендуется для асимм. GSM):
+    net.ipv4.conf.all.rp_filter = [0;32m2[0m
+    net.ipv4.conf.enp13s4f0.rp_filter = [0;32m2[0m
+    net.ipv4.conf.enp13s4f1.rp_filter = [0;32m2[0m
+    net.ipv4.conf.enp6s0f0.rp_filter = [0;32m2[0m
+
+[1m== 2. PJSIP channelstats (RxPkt/TxPkt по каналам) ==[0m
+
+                                             ...........Receive......... .........Transmit..........
+ BridgeId ChannelId ........ UpTime.. Codec.   Count    Lost Pct  Jitter   Count    Lost Pct  Jitter RTT....
+ ===========================================================================================================
+
+ a163997f 1001-00000005      00:01:19 slin48   3736       0    0   0.001   3729       5    0   0.000   0.003
+ a163997f provider-00000004  00:01:20 alaw     3964       0    0   0.001   3732       0    0   0.000   0.007
+
+Objects found: 2
+[0;33m  ... пауза 15s, повтор для прироста ...[0m
+
+[1m== 2b. channelstats повторно (сравните RxPkt/TxPkt) ==[0m
+
+                                             ...........Receive......... .........Transmit..........
+ BridgeId ChannelId ........ UpTime.. Codec.   Count    Lost Pct  Jitter   Count    Lost Pct  Jitter RTT....
+ ===========================================================================================================
+
+ a163997f 1001-00000005      00:01:34 slin48   4488       0    0   0.001   4483       6    0   0.000   0.002
+ a163997f provider-00000004  00:01:35 alaw     4717       0    0   0.001   4484       0    0   0.000   0.007
+
+Objects found: 2
+
+[1m== 3. Входящий RTP от GSM (10.1.5.x)  [плечо GSM -> Asterisk] ==[0m
+[0;33m  в логе нет 'Got RTP ... 10.1.5' (CC_RTP_DEBUG=1), но provider RxPkt=3964[0m
+[0;32m  -> GSM RTP доходит до Asterisk (см. channelstats п.2)[0m
+
+[1m== 4. Входящий RTP от агента (WebRTC)  [плечо агент -> Asterisk] ==[0m
+[0;33m  в логе нет 'Got RTP ... 172.16.6.183' (CC_RTP_DEBUG=1), но agent TxPkt=3729[0m
+[0;32m  -> микрофон агента доходит до Asterisk (channelstats)[0m
+
+[1m== 5. Вердикт (channelstats — главный источник; лог — только при CC_RTP_DEBUG=1) ==[0m
+  [0;32mМост Asterisk OK[0m: provider Rx +753, agent Rx +752 за 15s
+     GSM -> PBX -> WebRTC на уровне пакетов работает.
+  [0;33mЕсли абонента не слышно при растущем in= в браузере:[0m
+     - F12 [CC-RTP]: смотрите audioLevel / totalAudioEnergy (не только bytes)
+     - chrome://webrtc-internals -> inbound-rtp audioLevel
+     - Прослушайте MixMonitor: ls -lt /var/spool/asterisk/recordings/*/*/*.wav | head -3
+     - tcpdump leg2: sudo tcpdump -ni enp6s0f0 src 172.16.6.183 and dst 192.168.0/16 and udp -c 30
+
+[1m== 6. tcpdump-подсказки (во время звонка, отдельные терминалы) ==[0m
+  GSM media:   sudo tcpdump -ni enp13s4f1 net 10.1.5.64/27 and udp -vv
+  GSM SIP:     sudo tcpdump -ni enp13s4f0 net 10.1.5.8/29 and udp port 5060
+  PBX -> агент: sudo tcpdump -ni enp6s0f0 src 172.16.6.183 and net 192.168.0/16 and udp
+
+=== Got RTP from GSM (tail -c 3000000, last 10) ===
+(none — enable CC_RTP_DEBUG=1 for verbose RTP log)
+
+=== Got RTP from agent WebRTC (172.16.6.183 in Asterisk log, last 5) ===
+(none — CC_RTP_DEBUG=0 or agent silent)
+
+=== CC-TRACE last inbound 1263 ===
+(none)
+
+=== TCPDUMP leg1 (8s, enp13s4f1 net 10.1.5.64/27, media 10.212.154.35) ===
+tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
+listening on enp13s4f1, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+21:45:38.395177 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.408849 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.415164 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.428920 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.435159 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.448794 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.455167 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.468778 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.475170 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.488932 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.495170 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.509742 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.515158 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.529314 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.535164 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.548978 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.555172 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.568894 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.575160 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.588878 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.595166 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.609085 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.615161 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.629249 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.635156 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.648779 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.655159 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.668979 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.675164 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.688956 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.695159 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.709671 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.715171 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.729091 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.735184 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.748860 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.755157 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.769689 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+21:45:38.775161 IP 10.1.5.72.52472 > 10.212.154.35.10154: UDP, length 172
+21:45:38.789294 IP 10.212.154.35.10154 > 10.1.5.72.52472: UDP, length 172
+40 packets captured
+101 packets received by filter
+0 packets dropped by kernel
+LEG1 tcpdump summary: In=20 Out=20
+VERDICT leg1: In present — GSM RTP reaches PBX
+
+=== TCPDUMP leg2 (PBX -> agent, enp6s0f0 src 172.16.6.183 dst 192.168.1.103) ===
+tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
+listening on enp6s0f0, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+21:45:39.495473 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.515341 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.535358 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.555349 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.575335 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.595329 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.615334 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.635328 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.655333 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.675332 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.695336 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.715332 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.735341 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.755344 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.775335 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.795341 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.815358 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.835348 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.855334 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.875329 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.895338 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.915335 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.935336 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.955398 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.975341 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:39.995336 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:40.015336 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:40.035339 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:40.055355 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+21:45:40.075325 IP 172.16.6.183.19050 > 192.168.1.103.54982: UDP, length 182
+30 packets captured
+51 packets received by filter
+0 packets dropped by kernel
+LEG2 tcpdump summary: packets=30
+VERDICT leg2: PBX sends UDP toward agent
+
+=== Combined verdict ===
+RTP path OK on network (leg1 In + leg2 PBX->agent).
+If subscriber still inaudible: check browser [CC-RTP] audioLevel, MixMonitor wav, UMG payload.
+
+=== LEG2 hint (Asterisk -> agent 192.168.1.103) ===
+Browser [CC-RTP]: in= grows but no voice -> check audioLevel, not only bytesReceived
+  sudo tcpdump -ni enp6s0f0 src 172.16.6.183 and dst 192.168.1.103 and udp -c 30
+  MixMonitor: ls -lt /var/spool/asterisk/recordings/*/*/*.wav | head -3

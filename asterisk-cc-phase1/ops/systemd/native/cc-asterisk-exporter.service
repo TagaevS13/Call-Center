@@ -1,0 +1,15 @@
+[Unit]
+Description=Asterisk Prometheus exporter
+After=cc-asterisk.service
+Requires=cc-asterisk.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/cc/cc.env
+Environment=EXPORTER_LISTEN=127.0.0.1:9815
+ExecStart=/opt/cc/scripts/start_asterisk_exporter.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

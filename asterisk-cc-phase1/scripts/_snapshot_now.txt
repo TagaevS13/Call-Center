@@ -1,0 +1,71 @@
+=== env ===
+PUBLIC_DOMAIN=172.16.6.183
+GSM_MEDIA_ADDRESS=172.16.6.183
+ICE_TRANSPORT_POLICY=relay
+
+=== pjsip_provider ===
+media_address=172.16.6.183
+bind_rtp_to_media_address=yes
+match=10.1.5.8/29
+match=10.1.5.64/27
+
+=== endpoint ===
+Aor:  <Aor............................................>  <MaxContact>
+      Contact:  <Aor/ContactUri..........................> <Hash....> <Status> <RTT(ms)..>
+      Contact:  1001/sip:pbrvr12j@192.168.1.103:56984;tran 2089baa804 Avail         5.911
+ bind_rtp_to_media_address          : false
+ bundle                             : false
+ ice_support                        : true
+ media_address                      : 172.16.6.183
+ t38_bind_udptl_to_media_address    : false
+ webrtc                             : no
+
+=== queue ===
+russkaya has 0 calls (max unlimited) in 'leastrecent' strategy (2s holdtime, 42s talktime), W:0, C:4, A:3, SL:100.0%, SL2:100.0% within 20s
+   Members: 
+      PJSIP/1001 (ringinuse disabled)[0m[0m[0m ([1;32;40mNot in use[0m) has taken 4 calls (last was 1907 secs ago) [1;33;40m(login was 3400 secs ago)[0m
+   No Callers
+
+=== rtp_got ===
+[2026-06-18 05:51:33.162] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006540, ts 953308235, len 000170)
+[2026-06-18 05:51:33.182] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006541, ts 953308395, len 000170)
+[2026-06-18 05:51:33.201] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006542, ts 953308555, len 000170)
+[2026-06-18 05:51:33.222] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006543, ts 953308715, len 000170)
+[2026-06-18 05:51:33.245] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006544, ts 953308875, len 000170)
+[2026-06-18 05:51:33.262] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006545, ts 953309035, len 000170)
+[2026-06-18 05:51:33.282] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006546, ts 953309195, len 000170)
+[2026-06-18 05:51:33.301] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006547, ts 953309355, len 000170)
+[2026-06-18 05:51:33.322] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006548, ts 953309515, len 000170)
+[2026-06-18 05:51:33.341] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006549, ts 953309675, len 000170)
+[2026-06-18 05:51:33.362] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006550, ts 953309835, len 000170)
+[2026-06-18 05:51:33.382] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006551, ts 953309995, len 000170)
+[2026-06-18 05:51:33.402] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006552, ts 953310155, len 000170)
+[2026-06-18 05:51:33.422] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006553, ts 953310315, len 000170)
+[2026-06-18 05:51:33.442] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006554, ts 953310475, len 000170)
+[2026-06-18 05:51:33.462] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006555, ts 953310635, len 000170)
+[2026-06-18 05:51:33.481] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006556, ts 953310795, len 000170)
+[2026-06-18 05:51:33.502] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006557, ts 953310955, len 000170)
+[2026-06-18 05:51:33.522] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006558, ts 953311115, len 000170)
+[2026-06-18 05:51:33.541] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 006559, ts 953311275, len 000170)
+
+=== rtp_gsm ===
+[2026-06-18 05:51:07.282] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005246, ts 953101195, len 000170)
+[2026-06-18 05:51:07.402] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005252, ts 953102155, len 000170)
+[2026-06-18 05:51:07.522] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005258, ts 953103115, len 000170)
+[2026-06-18 05:51:07.782] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005271, ts 953105195, len 000170)
+[2026-06-18 05:51:07.902] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005277, ts 953106155, len 000170)
+[2026-06-18 05:51:08.022] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005283, ts 953107115, len 000170)
+[2026-06-18 05:51:08.282] VERBOSE[7616][C-0000000a] res_rtp_asterisk.c: Got  RTP packet from    172.16.6.183:49200 (type 08, seq 005296, ts 953109195, len 000170)
+
+=== rtp_sent_agent ===
+(empty)
+
+=== trace ===
+[2026-06-18 05:35:31.570] VERBOSE[5758][C-00000009] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000a", "CC-TRACE|phase=INBOUND_START|ctx=from-provider|ext=1263|caller=918441995|name=918441995|did=|unique=1781760931.18|linked=|chan=PJSIP/provider-0000000a|peer=|pjsip_ep=provider|remote=10.1.5.10:5063|local=172.16.4.19:5060|rtp_src=|queue=|qstatus=|member=|hangup=0") in new stack
+[2026-06-18 05:35:48.323] VERBOSE[5758][C-00000009] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000a", "CC-TRACE|phase=QUEUE_ENTER|ctx=queue-enter|ext=russkaya|caller=918441995|name=918441995|did=1263|unique=1781760931.18|linked=|chan=PJSIP/provider-0000000a|peer=|pjsip_ep=provider|remote=10.1.5.10:5063|local=172.16.4.19:5060|rtp_src=172.16.6.183:18504|queue=|qstatus=|member=|hangup=0") in new stack
+[2026-06-18 05:36:07.337] VERBOSE[5758][C-00000009] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000a", "CC-TRACE|phase=HANGUP|ctx=queue-enter|ext=h|caller=918441995|name=918441995|did=1263|unique=1781760931.18|linked=|chan=PJSIP/provider-0000000a|peer=|pjsip_ep=provider|remote=10.1.5.10:5063|local=172.16.4.19:5060|rtp_src=172.16.6.183:18504|queue=russkaya|qstatus=|member=PJSIP/1001|hangup=16") in new stack
+[2026-06-18 05:36:07.337] VERBOSE[5758][C-00000009] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000a", "CC-TRACE|phase=QUEUE_DONE|ctx=queue-enter|ext=russkaya|caller=918441995|name=918441995|did=1263|unique=1781760931.18|linked=|chan=PJSIP/provider-0000000a|peer=|pjsip_ep=provider|remote=10.1.5.10:5063|local=172.16.4.19:5060|rtp_src=172.16.6.183:18504|queue=russkaya|qstatus=|member=PJSIP/1001|hangup=16") in new stack
+[2026-06-18 05:50:45.100] VERBOSE[7561][C-0000000a] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000c", "CC-TRACE|phase=INBOUND_START|ctx=from-provider|ext=1263|caller=918441995|name=918441995|did=|unique=1781761845.21|linked=|chan=PJSIP/provider-0000000c|peer=|pjsip_ep=provider|remote=10.1.5.10:5061|local=172.16.4.19:5060|rtp_src=|queue=|qstatus=|member=|hangup=0") in new stack
+[2026-06-18 05:51:01.836] VERBOSE[7561][C-0000000a] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000c", "CC-TRACE|phase=QUEUE_ENTER|ctx=queue-enter|ext=russkaya|caller=918441995|name=918441995|did=1263|unique=1781761845.21|linked=|chan=PJSIP/provider-0000000c|peer=|pjsip_ep=provider|remote=10.1.5.10:5061|local=172.16.4.19:5060|rtp_src=172.16.6.183:10040|queue=|qstatus=|member=|hangup=0") in new stack
+[2026-06-18 05:51:33.549] VERBOSE[7561][C-0000000a] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000c", "CC-TRACE|phase=HANGUP|ctx=queue-enter|ext=h|caller=918441995|name=918441995|did=1263|unique=1781761845.21|linked=|chan=PJSIP/provider-0000000c|peer=|pjsip_ep=provider|remote=10.1.5.10:5061|local=172.16.4.19:5060|rtp_src=172.16.6.183:10040|queue=russkaya|qstatus=|member=PJSIP/1001|hangup=18") in new stack
+[2026-06-18 05:51:33.550] VERBOSE[7561][C-0000000a] pbx.c: Executing [s@cc-trace:1] NoOp("PJSIP/provider-0000000c", "CC-TRACE|phase=QUEUE_DONE|ctx=queue-enter|ext=russkaya|caller=918441995|name=918441995|did=1263|unique=1781761845.21|linked=|chan=PJSIP/provider-0000000c|peer=|pjsip_ep=provider|remote=10.1.5.10:5061|local=172.16.4.19:5060|rtp_src=172.16.6.183:10040|queue=russkaya|qstatus=|member=PJSIP/1001|hangup=18") in new stack

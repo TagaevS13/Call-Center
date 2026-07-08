@@ -1,0 +1,13 @@
+[Unit]
+Description=Asterisk CC prestart (TLS, ICE, env substitution)
+Before=cc-asterisk.service
+Wants=network-online.target cc-gsm-routes.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/cc/cc.env
+ExecStart=/bin/bash /opt/cc/scripts/asterisk-prestart.sh
+
+[Install]
+WantedBy=multi-user.target cc-asterisk.service

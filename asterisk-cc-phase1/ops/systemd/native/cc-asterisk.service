@@ -1,0 +1,19 @@
+[Unit]
+Description=Asterisk PBX (Call Center native)
+After=network-online.target cc-asterisk-prestart.service cc-gsm-routes.service
+Wants=network-online.target cc-gsm-routes.service
+Requires=cc-asterisk-prestart.service
+
+[Service]
+Type=simple
+User=asterisk
+Group=asterisk
+EnvironmentFile=-/etc/cc/cc.env
+ExecStart=/usr/sbin/asterisk -f -U asterisk -G asterisk
+ExecReload=/usr/sbin/asterisk -rx 'core reload'
+Restart=on-failure
+RestartSec=4
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

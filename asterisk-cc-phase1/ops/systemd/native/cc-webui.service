@@ -1,0 +1,15 @@
+[Unit]
+Description=Call Center Web UI (HTTP + HTTPS)
+After=network-online.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/cc/cc.env
+WorkingDirectory=/opt/call-center/asterisk-cc-phase1/webui
+ExecStart=/opt/call-center/asterisk-cc-phase1/webui/.venv/bin/python serve.py 9000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
