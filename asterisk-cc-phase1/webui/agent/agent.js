@@ -94,6 +94,7 @@ function resolveTelephonySettings(saved = {}, tel = {}) {
     turn_password: tel.turn_password,
     webrtc_mode: tel.webrtc_mode,
     bundle_policy: tel.bundle_policy,
+    ice_transport_policy: tel.ice_transport_policy,
   };
 }
 
@@ -716,9 +717,13 @@ function buildPeerConnectionConfiguration(tel = {}) {
   //  manual (bundle=no)  -> "balanced"   (max-bundle ломает Answer: нет a=group:BUNDLE)
   //  standard (webrtc=yes -> bundle=yes) -> "max-bundle"
   const bundlePolicy = tel.bundle_policy === "max-bundle" ? "max-bundle" : "balanced";
+  const icePolicy =
+    tel.ice_transport_policy === "relay" || tel.ice_transport_policy === "all"
+      ? tel.ice_transport_policy
+      : "all";
   return {
     iceServers,
-    iceTransportPolicy: "all",
+    iceTransportPolicy: icePolicy,
     bundlePolicy,
     rtcpMuxPolicy: "require",
   };
@@ -766,11 +771,17 @@ function startWebRtcStatsLogger(session, label = "call") {
         const remoteCand = pair ? byId.get(pair.remoteCandidateId) : null;
         const inB = inbound?.bytesReceived ?? 0;
         const outB = outbound?.bytesSent ?? 0;
+        const audioLevel = inbound?.audioLevel;
+        const audioEnergy = inbound?.totalAudioEnergy;
         const level = inB > 5000 ? "info" : "warn";
+        const energyHint =
+          audioLevel != null || audioEnergy != null
+            ? ` audioLevel=${audioLevel ?? "?"} energy=${audioEnergy ?? "?"}`
+            : "";
         const msg =
-          `[CC-RTP ${label}] ice=${pc.iceConnectionState} in=${inB || "NO-inbound-rtp"} out=${outB} ` +
-          `local=${localCand?.address || "?"}:${localCand?.port || "?"} ` +
-          `remote=${remoteCand?.address || "?"}:${remoteCand?.port || "?"} ` +
+          `[CC-RTP ${label}] ice=${pc.iceConnectionState} in=${inB || "NO-inbound-rtp"} out=${outB}${energyHint} ` +
+          `local=${localCand?.address || "?"}:${localCand?.port || "?"}(${localCand?.candidateType || "?"}) ` +
+          `remote=${remoteCand?.address || "?"}:${remoteCand?.port || "?"}(${remoteCand?.candidateType || "?"}) ` +
           `tracks=${collectInboundAudioTracks(session).length}`;
         if (level === "warn") console.warn(msg);
         else console.info(msg);
@@ -779,10 +790,11 @@ function startWebRtcStatsLogger(session, label = "call") {
           const host = state.config?.domain || defaultTelephonyHost();
           toast(
             "Звонок принят, но голос абонента не слышен (in=NO-inbound-rtp). " +
-              `На ПК: PowerShell от администратора → scripts/install-agent-firewall.ps1 ` +
-              `(UDP с ${host}). Без прав админа будет «Отказано в доступе».`,
+              "Если firewall на ПК уже настроен — режет сеть (Huawei 3044 outbound). " +
+              `Обновите страницу (Ctrl+Shift+R) — включён TURN relay. ` +
+              `Иначе сетевику: UDP ${host} → ваш ПК (10000-20000, 3478, 49160-49200).`,
             "warn",
-            15000
+            18000
           );
         }
       })
@@ -801,6 +813,7 @@ async function requestCallNotifications() {
 }
 
 function notifyIncomingCall(number, queue) {
+  startIncomingRingtone();
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   try {
     const n = new Notification("Входящий звонок", {
@@ -814,6 +827,29 @@ function notifyIncomingCall(number, queue) {
       unlockAudioPlayback();
     };
   } catch { /* ignore */ }
+}
+
+let incomingRingAudio = null;
+
+function startIncomingRingtone() {
+  stopIncomingRingtone();
+  unlockAudioPlayback();
+  try {
+    incomingRingAudio = new Audio("sounds/note97.wav");
+    incomingRingAudio.loop = true;
+    incomingRingAudio.volume = 1;
+    const p = incomingRingAudio.play();
+    if (p?.catch) p.catch(() => { /* autoplay blocked until user gesture */ });
+  } catch { /* ignore */ }
+}
+
+function stopIncomingRingtone() {
+  if (!incomingRingAudio) return;
+  try {
+    incomingRingAudio.pause();
+    incomingRingAudio.currentTime = 0;
+  } catch { /* ignore */ }
+  incomingRingAudio = null;
 }
 
 function showUnlockAudioButton() {
@@ -984,6 +1020,7 @@ function setCallMuted(muted) {
 // ---- Call actions ----
 async function onAnswer() {
   if (!state.call || !state.sipCall) return;
+  stopIncomingRingtone();
   if (warnInsecureMicrophone()) return;
   // Только синхронный unlock в клике — await getUserMedia() ломает autoplay для play().
   unlockAudioPlayback();
@@ -1017,6 +1054,7 @@ async function onAnswer() {
 }
 function onHangup() {
   if (!state.call) return;
+  stopIncomingRingtone();
   const c = state.call;
   if (state.sipCall) { try { state.sipCall.terminate(); } catch {} }
   pushHistory({
@@ -1177,7 +1215,7 @@ async function startSip() {
   }
   try {
     const { UserAgent, Registerer, SessionState, RegistererState, TransportState } =
-      await import("https://cdn.jsdelivr.net/npm/sip.js@0.21.2/+esm");
+      await import("./vendor/sip.esm.js");
     SipSessionState = SessionState;
     const uri = UserAgent.makeURI(`sip:${state.config.user}@${state.config.domain}`);
     state.ua = new UserAgent({

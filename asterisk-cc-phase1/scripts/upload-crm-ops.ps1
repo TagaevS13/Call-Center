@@ -39,8 +39,8 @@ foreach ($rel in $files) {
 }
 
 Write-Host "`nOn server run:"
-Write-Host "  cd $Remote"
-Write-Host "  docker compose exec webui pip install -q -r requirements.txt"
-Write-Host "  docker compose exec webui python seed_admin.py /app/data"
-Write-Host "  docker compose restart webui"
+Write-Host "  cd $Remote/webui"
+Write-Host "  pip install -q -r requirements.txt"
+Write-Host "  python seed_admin.py data"
+Write-Host "  sudo systemctl restart cc-webui"
 Write-Host "  curl -s http://127.0.0.1:9000/api/admin/crm-connectors"

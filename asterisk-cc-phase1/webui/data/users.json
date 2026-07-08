@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-05-19",
+  "updated_at": "2026-06-23",
   "users": [
     {
       "id": 1,
@@ -10,16 +10,6 @@
       "role": "admin",
       "sip_user": null,
       "groups": ["admins"],
-      "status": "active"
-    },
-    {
-      "id": 2,
-      "login": "supervisor",
-      "password": "supervisor",
-      "full_name": "Иван Супервизоров",
-      "role": "supervisor",
-      "sip_user": null,
-      "groups": ["supervisors", "support_l1"],
       "status": "active"
     },
     {
@@ -33,43 +23,6 @@
       "groups": ["skill_russkaya", "skill_tech"],
       "skill_mode": "by_group",
       "pick_skills": true,
-      "status": "active"
-    },
-    {
-      "id": 4,
-      "login": "agent02",
-      "password": "agent02",
-      "full_name": "Пётр Операторов",
-      "role": "agent",
-      "sip_user": "1002",
-      "sip_password": "agent1002",
-      "groups": ["skill_tajikskaya", "skill_ishodyashiye"],
-      "skill_mode": "by_skill",
-      "pick_skills": false,
-      "assigned_skills": [
-        { "skill_id": 7, "queue": "tajikskaya", "name": "Tajikskaya gruppa", "agent_rating": 1, "skill_rating": 1, "penalty": 0 },
-        { "skill_id": 6, "queue": "ishodyashiye", "name": "Iskhodyashiye zvonki", "agent_rating": 1, "skill_rating": 1, "penalty": 0 }
-      ],
-      "status": "active"
-    },
-    {
-      "id": 5,
-      "login": "qa01",
-      "password": "qa01",
-      "full_name": "Мария Контроль",
-      "role": "qa",
-      "sip_user": null,
-      "groups": ["qa"],
-      "status": "active"
-    },
-    {
-      "id": 6,
-      "login": "auditor",
-      "password": "auditor",
-      "full_name": "Сергей Аудитов",
-      "role": "auditor",
-      "sip_user": null,
-      "groups": ["audit"],
       "status": "active"
     }
   ]

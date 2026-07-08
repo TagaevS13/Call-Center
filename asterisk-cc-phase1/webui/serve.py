@@ -27,11 +27,11 @@ TLS_PORT = int(os.environ.get("WEBUI_TLS_PORT", "9443"))
 ROOT = Path(__file__).parent.resolve()
 TLS_CERT = os.environ.get(
     "CC_TLS_CERT",
-    "/asterisk-etc/keys/asterisk.pem" if Path("/asterisk-etc/keys/asterisk.pem").is_file() else "",
+    "/etc/asterisk/keys/asterisk.pem" if Path("/etc/asterisk/keys/asterisk.pem").is_file() else "",
 )
 TLS_KEY = os.environ.get(
     "CC_TLS_KEY",
-    "/asterisk-etc/keys/asterisk.key" if Path("/asterisk-etc/keys/asterisk.key").is_file() else "",
+    "/etc/asterisk/keys/asterisk.key" if Path("/etc/asterisk/keys/asterisk.key").is_file() else "",
 )
 
 

@@ -65,7 +65,7 @@ New-NetFirewallRule -DisplayName "CC-Asterisk-RTP-out" -Direction Outbound -Acti
 
 ## 3. Сервер `172.16.6.183` (хост / iptables / корп. FW)
 
-Сервисы в **host network** (Docker).
+Сервисы в **host network** (native).
 
 | Сервис | Порт(ы) | Протокол | Направление |
 |--------|---------|----------|-------------|
@@ -74,12 +74,12 @@ New-NetFirewallRule -DisplayName "CC-Asterisk-RTP-out" -Direction Outbound -Acti
 | TURN relay | 49160–49200 | UDP | In/Out |
 | Asterisk WSS | 8089 | TCP | In |
 | Web UI Agent | 9443 | TCP | In |
-| GSM (провайдер) | 10.1.5.8/29, 10.1.5.64/27 via enp13s4f0 | UDP SIP+RTP | см. [gsm-network-routes.md](gsm-network-routes.md) |
+| GSM (провайдер) | 10.1.5.8/29 via enp13s4f0; 10.1.5.64/27 via enp6s0f0 | UDP SIP+RTP | см. [gsm-network-routes.md](gsm-network-routes.md) |
 
 Проверить:
 
 - [ ] `ss -ulnp | grep -E '3478|10000'` — слушают на `172.16.6.183`
-- [ ] `docker ps` — контейнеры `asterisk-a`, `coturn`, `webui` **Up**
+- [ ] `systemctl is-active asterisk cc-coturn cc-webui` — все **active**
 - [ ] Локальный firewall хоста не блокирует UDP между Asterisk и coturn на одном IP
 - [ ] Во время звонка: в логах Asterisk есть `Got RTP packet from 192.168.1.103:<port>` (микрофон агента)
 

@@ -42,7 +42,7 @@
 
 1. Prometheus: смонтировать `monitoring/prometheus/prometheus.yml` и `alerts.yml`.
 2. Grafana: автопровижининг через `monitoring/grafana/provisioning/`. Импортировать `monitoring/grafana/dashboards/ops_dashboard.json`.
-3. asterisk-exporter — на каждой ноде Asterisk локально (см. `docker-compose.yml`, профиль prod).
+3. asterisk-exporter — на каждой ноде Asterisk локально (см. `cc-asterisk-exporter.service`).
 4. fail2ban на ast-a/ast-b с `monitoring/fail2ban/`.
 5. Loki/rsyslog: пробросить `/var/log/asterisk/*` и `journald` в централизованное хранилище.
 

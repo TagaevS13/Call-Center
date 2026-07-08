@@ -7,6 +7,7 @@ import {
 } from "./shared/auth.js";
 
 async function tryRedirectExisting() {
+  if (new URLSearchParams(location.search).has("relogin")) return;
   const s = getSession();
   if (!s) return;
   location.href = homeForRole(s.role);

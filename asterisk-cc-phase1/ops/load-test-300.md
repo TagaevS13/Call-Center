@@ -2,7 +2,7 @@
 
 Цель — проверить, что **prod-развёртывание** ([deploy.md](deploy.md)) выдерживает целевую ёмкость до **300 concurrent** (≈600 каналов Asterisk: абонент + агент).
 
-> **Lab** (`docker compose` на одном хосте) — только пилот до ~30–50 звонков. Для 300 используйте отдельные VM: **ast-a** (active), **ast-b** (standby), **db-1**, **mon-1**.
+> **Lab** (native на одном хосте) — только пилот до ~30–50 звонков. Для 300 используйте отдельные VM: **ast-a** (active), **ast-b** (standby), **db-1**, **mon-1**.
 
 ---
 
@@ -12,7 +12,7 @@
 - [ ] GSM/транки или **SIPp**-имитация абонентов (для изолированного теста без GSM)
 - [ ] Агенты: SIP-телефоны или WebRTC (WebRTC тяжелее — тестировать отдельно)
 - [ ] Grafana/Prometheus: дашборд `ops_dashboard.json`, алерт `HighConcurrentCalls` (>180) — [alerts.yml](../monitoring/prometheus/alerts.yml)
-- [ ] `ulimit -n` на Asterisk ≥ **65536** (уже в `docker-entrypoint.sh` для lab)
+- [ ] `ulimit -n` на Asterisk ≥ **65536** (уже в `asterisk-prestart.sh` для lab)
 
 ---
 
@@ -42,7 +42,7 @@ asterisk -rx "core show channels" | tail -5
 asterisk -rx "queue show" | head -40
 ```
 
-Скрипт из репозитория (на сервере с docker):
+Скрипт из репозитория (на сервере):
 
 ```bash
 cd /opt/call-center/asterisk-cc-phase1

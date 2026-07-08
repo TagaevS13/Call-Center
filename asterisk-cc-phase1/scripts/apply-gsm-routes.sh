@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
-# Маршруты к GSM — раздельно:
-#   сигналинг 10.1.5.8/29  → enp13s4f0 / 172.16.4.1  (SoftX, 172.16.4.19)
-#   медиа     10.1.5.64/27 → enp6s0f0 / default gw   (UMG, 172.16.6.183)
+# Split-маршруты GSM:
+#   сигналинг 10.1.5.8/29  → 172.16.4.1      / enp13s4f0  (SIP bind 172.16.4.19)
+#   медиа     10.1.5.64/27 → 10.212.154.34  / enp13s4f1  (RTP bind 10.212.154.35)
 set -euo pipefail
 
 GSM_SIGNAL_NET="${GSM_ROUTE_SIGNAL_NET:-10.1.5.8/29}"
 GSM_MEDIA_NET="${GSM_ROUTE_MEDIA_NET:-10.1.5.64/27}"
 GSM_SIGNAL_VIA="${GSM_ROUTE_SIGNAL_VIA:-172.16.4.1}"
 GSM_SIGNAL_DEV="${GSM_ROUTE_SIGNAL_DEV:-enp13s4f0}"
-GSM_MEDIA_DEV="${GSM_ROUTE_MEDIA_DEV:-enp6s0f0}"
-GSM_MEDIA_VIA="${GSM_ROUTE_MEDIA_VIA:-$(ip -4 route show default dev "${GSM_MEDIA_DEV}" 2>/dev/null | awk '{print $3}' | head -1)}"
-GSM_MEDIA_VIA="${GSM_MEDIA_VIA:-172.16.6.131}"
+GSM_MEDIA_VIA="${GSM_ROUTE_MEDIA_VIA:-10.212.154.34}"
+GSM_MEDIA_DEV="${GSM_ROUTE_MEDIA_DEV:-enp13s4f1}"
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "Run: sudo bash $0" >&2
@@ -24,12 +23,14 @@ for dev in "$GSM_SIGNAL_DEV" "$GSM_MEDIA_DEV"; do
   fi
 done
 
-# Убрать устаревшие /32 и старую схему «всё через enp13s4f0»
-for stale in 10.1.5.10/32 10.1.5.75/32; do
+# Убрать устаревшие /32, blanket /24 и wrong-split маршруты
+for stale in 10.1.5.10/32 10.1.5.72/32 10.1.5.75/32; do
   while ip route del "$stale" 2>/dev/null; do :; done
 done
-while ip route del 10.1.5.0/24 via 172.16.4.1 dev enp13s4f0 2>/dev/null; do :; done
+while ip route del 10.1.5.0/24 2>/dev/null; do :; done
+while ip route del "${GSM_SIGNAL_NET}" via 172.16.6.131 dev enp6s0f0 2>/dev/null; do :; done
 while ip route del "${GSM_MEDIA_NET}" via 172.16.4.1 dev enp13s4f0 2>/dev/null; do :; done
+while ip route del "${GSM_MEDIA_NET}" via 172.16.6.131 dev enp6s0f0 2>/dev/null; do :; done
 
 ip route replace "${GSM_SIGNAL_NET}" via "${GSM_SIGNAL_VIA}" dev "${GSM_SIGNAL_DEV}"
 ip route replace "${GSM_MEDIA_NET}" via "${GSM_MEDIA_VIA}" dev "${GSM_MEDIA_DEV}"

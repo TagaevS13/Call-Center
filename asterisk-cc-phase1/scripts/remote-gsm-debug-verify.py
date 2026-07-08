@@ -47,7 +47,7 @@ def main() -> None:
     routes = run(c, "ip r | grep 10.1.5")
     media_addr = run(
         c,
-        "docker compose exec -T asterisk-a grep '^media_address=' /etc/asterisk/pjsip_provider.conf 2>/dev/null",
+        "grep '^media_address=' /etc/asterisk/pjsip_provider.conf 2>/dev/null",
     )
     env_gsm = run(c, "grep -E '^GSM_|^PUBLIC_DOMAIN=' .env 2>/dev/null")
 

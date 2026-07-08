@@ -36,7 +36,9 @@ export function requireSession({ roles, redirect = "../index.html" } = {}) {
     return null;
   }
   if (roles?.length && !roles.includes(s.role)) {
-    location.href = redirect;
+    clearSession();
+    const sep = redirect.includes("?") ? "&" : "?";
+    location.href = `${redirect}${sep}relogin=1`;
     return null;
   }
   return s;

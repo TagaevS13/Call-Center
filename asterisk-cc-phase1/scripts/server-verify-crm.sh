@@ -10,9 +10,9 @@ done
 
 grep -q crm-connectors webui/cc_api.py && echo "OK cc_api has crm routes" || echo "FAIL cc_api OLD - upload webui/cc_api.py"
 
-docker compose exec -T webui pip install -q -r requirements.txt
-docker compose exec -T webui python seed_admin.py /app/data
-docker compose restart webui
+cd /opt/call-center/asterisk-cc-phase1/webui && pip install -q -r requirements.txt
+cd /opt/call-center/asterisk-cc-phase1/webui && python seed_admin.py data
+systemctl restart cc-webui
 sleep 8
 
 echo "=== API ==="

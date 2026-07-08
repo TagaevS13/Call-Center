@@ -13,15 +13,15 @@ jlog() {
 }
 
 AST() {
-  docker compose exec -T asterisk-a asterisk -rx "$*" 2>/dev/null || true
+  asterisk -rx "$*" 2>/dev/null || true
 }
 
 routes=$(ip r | grep 10.1.5 || true)
-media=$(docker compose exec -T asterisk-a grep '^media_address=' /etc/asterisk/pjsip_provider.conf 2>/dev/null || true)
+media=$(grep '^media_address=' /etc/asterisk/pjsip_provider.conf 2>/dev/null || true)
 stats1=$(AST 'pjsip show channelstats')
 sleep "${1:-8}"
 stats2=$(AST 'pjsip show channelstats')
-gsm_rtp=$(docker compose exec -T asterisk-a sh -c "tail -c 2000000 /var/log/asterisk/full | grep -a 'Got  RTP packet from' | grep 10.1.5 | tail -5" 2>/dev/null || true)
+gsm_rtp=$(sh -c "tail -c 2000000 /var/log/asterisk/full | grep -a 'Got  RTP packet from' | grep 10.1.5 | tail -5" 2>/dev/null || true)
 
 jlog "D" "capture-call-evidence.sh" "routes" "$(printf '%s' "$routes" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"
 jlog "E" "capture-call-evidence.sh" "media_address" "$(printf '%s' "$media" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')"

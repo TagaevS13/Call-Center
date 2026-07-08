@@ -1,5 +1,5 @@
 [Unit]
-Description=Split GSM routes (signal enp13s4f0, media enp6s0f0)
+Description=Split GSM routes (signal enp13s4f0, media enp13s4f1)
 After=network-online.target
 Wants=network-online.target
 
@@ -10,10 +10,10 @@ Environment=GSM_ROUTE_SIGNAL_NET=10.1.5.8/29
 Environment=GSM_ROUTE_MEDIA_NET=10.1.5.64/27
 Environment=GSM_ROUTE_SIGNAL_VIA=172.16.4.1
 Environment=GSM_ROUTE_SIGNAL_DEV=enp13s4f0
-Environment=GSM_ROUTE_MEDIA_VIA=172.16.6.131
-Environment=GSM_ROUTE_MEDIA_DEV=enp6s0f0
+Environment=GSM_ROUTE_MEDIA_VIA=10.212.154.34
+Environment=GSM_ROUTE_MEDIA_DEV=enp13s4f1
 ExecStart=/bin/bash /opt/call-center/asterisk-cc-phase1/scripts/apply-gsm-routes.sh
-ExecStop=/bin/sh -c 'ip route del 10.1.5.8/29 via 172.16.4.1 dev enp13s4f0 2>/dev/null; ip route del 10.1.5.64/27 via 172.16.6.131 dev enp6s0f0 2>/dev/null; true'
+ExecStop=/bin/sh -c 'ip route del 10.1.5.8/29 via 172.16.4.1 dev enp13s4f0 2>/dev/null; ip route del 10.1.5.64/27 via 10.212.154.34 dev enp13s4f1 2>/dev/null; ip route del 10.1.5.64/27 via 172.16.6.131 dev enp6s0f0 2>/dev/null; ip route del 10.1.5.0/24 2>/dev/null; true'
 
 [Install]
 WantedBy=multi-user.target

@@ -1,6 +1,6 @@
-# GSM static routes on project — split NICs
-#   signal 10.1.5.8/29  → enp13s4f0 / 172.16.4.1
-#   media  10.1.5.64/27 → enp6s0f0 / 172.16.6.131
+# Split GSM static routes on project
+#   signal 10.1.5.8/29  → enp13s4f0 / 172.16.4.1  (SIP 172.16.4.19)
+#   media  10.1.5.64/27 → enp6s0f0 / 172.16.6.131 (RTP 172.16.6.183)
 
 network:
   version: 2

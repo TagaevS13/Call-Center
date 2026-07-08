@@ -36,11 +36,11 @@ def set_etc_paths(etc: Path) -> None:
 
 
 PUBLIC_DOMAIN = os.environ.get("PUBLIC_DOMAIN", "172.16.6.183")
+IVR_MENU_PROMPT = os.environ.get("CC_IVR_MENU_PROMPT", "custom/101")
 
 PJSIP_TPL = """; agent {sip}
 [{sip}](agent-tpl)
 type=endpoint
-transport=transport-ws
 auth={sip}-auth
 aors={sip}
 callerid={fullname} <{sip}>
@@ -137,8 +137,12 @@ def generate_vdn_conf(routes: list[dict], options_by_vdn: dict[int, list[dict]])
         lines.append(f"[{ctx}-direct]")
         lines.append(f"exten => s,1,NoOp(VDN {esc_asterisk(r.get('name') or num)} direct -> {q})")
         lines.append(" same => n,AGI(/opt/cc/scripts/lookup_subscriber.agi,${CALLERID(num)})")
-        lines.append(' same => n,GotoIf($["${SUB_BLOCKED}"="1"]?blacklisted,1)')
+        lines.append(' same => n,GotoIf($["${SUB_BLOCKED}"="1"]?ivr-main,blacklisted,1)')
         lines.append(' same => n,GotoIf($["${SUB_VIP}"="1"]?queue-enter,${SUB_VIP_QUEUE},1)')
+        lines.append(" same => n,Progress()")
+        lines.append(f" same => n,Playback({IVR_MENU_PROMPT},noanswer)")
+        lines.append(" same => n,Answer()")
+        lines.append(" same => n,Wait(0.3)")
         lines.append(f" same => n,Goto(queue-enter,{q},1)")
         lines.append(" same => n,Hangup()")
         lines.append("")
@@ -157,9 +161,9 @@ def generate_vdn_conf(routes: list[dict], options_by_vdn: dict[int, list[dict]])
         lines.append(" same => n,Wait(0.3)")
         lines.append(" same => n,Set(IVR_RETRIES=0)")
         lines.append(" same => n,AGI(/opt/cc/scripts/lookup_subscriber.agi,${CALLERID(num)})")
-        lines.append(' same => n,GotoIf($["${SUB_BLOCKED}"="1"]?blacklisted,1)')
+        lines.append(' same => n,GotoIf($["${SUB_BLOCKED}"="1"]?ivr-main,blacklisted,1)')
         lines.append(' same => n,GotoIf($["${SUB_VIP}"="1"]?queue-enter,${SUB_VIP_QUEUE},1)')
-        lines.append(" same => n(menu),Read(IVR_DIGIT,,1,,,15)")
+        lines.append(f" same => n(menu),Read(IVR_DIGIT,{IVR_MENU_PROMPT},1,,,15)")
         for o in opts:
             digit = str(o.get("digit") or "")[:1]
             queue = o.get("queue_name") or "support"
@@ -199,6 +203,59 @@ def generate_pjsip_agents(rows: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def fetch_queue_members(cur) -> dict[str, list]:
+    """Очереди Asterisk: agent_queue + assigned_skills + очереди из групп агента."""
+    members_by_queue: dict[str, list] = {}
+
+    def add(queue: str, sip: str, penalty: int = 0) -> None:
+        q = (queue or "").strip()
+        if not q or not re.match(r"^[0-9]+$", sip or ""):
+            return
+        bucket = members_by_queue.setdefault(q, [])
+        if any(m.get("sip_user") == sip for m in bucket):
+            return
+        bucket.append({"queue": q, "sip_user": sip, "penalty": int(penalty or 0)})
+
+    cur.execute(
+        """
+        SELECT aq.queue, a.sip_user, aq.penalty
+        FROM agent_queue aq
+        JOIN agents a ON a.id = aq.agent_id
+        WHERE a.status = 'active' AND aq.paused = FALSE
+          AND a.sip_user ~ '^[0-9]+$'
+        """
+    )
+    for m in cur.fetchall():
+        add(m["queue"], m["sip_user"], m["penalty"])
+
+    cur.execute(
+        """
+        SELECT aas.queue_name AS queue, a.sip_user, aas.penalty
+        FROM agent_assigned_skills aas
+        JOIN agents a ON a.id = aas.agent_id
+        WHERE a.status = 'active' AND a.sip_user ~ '^[0-9]+$'
+        """
+    )
+    for m in cur.fetchall():
+        add(m["queue"], m["sip_user"], m["penalty"])
+
+    cur.execute(
+        """
+        SELECT gq.queue, a.sip_user, g.default_penalty AS penalty
+        FROM agent_groups ag
+        JOIN agents a ON a.id = ag.agent_id
+        JOIN group_queues gq ON gq.group_id = ag.group_id
+        JOIN groups g ON g.id = ag.group_id
+        WHERE a.status = 'active' AND a.role = 'agent'
+          AND a.sip_user ~ '^[0-9]+$'
+        """
+    )
+    for m in cur.fetchall():
+        add(m["queue"], m["sip_user"], m["penalty"])
+
+    return members_by_queue
+
+
 def fetch_all(conn) -> tuple[list, list, dict, list, dict]:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
@@ -221,19 +278,10 @@ def fetch_all(conn) -> tuple[list, list, dict, list, dict]:
             "WHERE status = 'active' AND sip_user ~ '^[0-9]+$' ORDER BY sip_user"
         )
         agents = cur.fetchall()
-        cur.execute(
-            "SELECT aq.queue, a.sip_user, aq.penalty "
-            "FROM agent_queue aq JOIN agents a ON a.id = aq.agent_id "
-            "WHERE a.status = 'active' AND a.sip_user ~ '^[0-9]+$' "
-            "ORDER BY aq.queue, aq.penalty, a.sip_user"
-        )
-        member_rows = cur.fetchall()
+        members_by_queue = fetch_queue_members(cur)
     opts_by: dict[int, list] = {}
     for o in opts_rows:
         opts_by.setdefault(o["vdn_id"], []).append(o)
-    members_by_queue: dict[str, list] = {}
-    for m in member_rows:
-        members_by_queue.setdefault(m["queue"], []).append(m)
     return queues, routes, opts_by, agents, members_by_queue
 
 

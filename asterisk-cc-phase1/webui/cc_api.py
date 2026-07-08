@@ -774,6 +774,9 @@ def handle_api(handler) -> bool:
         turn_password = (os.environ.get("TURN_PASSWORD") or "ccagentturn").strip()
         webrtc_mode = (os.environ.get("AGENT_WEBRTC_MODE") or "manual").strip().lower()
         bundle_policy = "max-bundle" if webrtc_mode == "standard" else "balanced"
+        ice_policy = (os.environ.get("ICE_TRANSPORT_POLICY") or "all").strip().lower()
+        if ice_policy not in ("all", "relay"):
+            ice_policy = "all"
         json_response(
             handler,
             200,
@@ -805,6 +808,7 @@ def handle_api(handler) -> bool:
                 "turn_password": turn_password,
                 "webrtc_mode": webrtc_mode,
                 "bundle_policy": bundle_policy,
+                "ice_transport_policy": ice_policy,
             },
         )
         return True

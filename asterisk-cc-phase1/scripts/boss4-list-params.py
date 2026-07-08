@@ -36,7 +36,7 @@ def main():
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     c.connect(HOST, username=USER, password=PASSWORD, timeout=30)
     cmd = (
-        f"cd {REMOTE} && docker compose exec -T webui "
+        f"cd {REMOTE} && cd /opt/call-center/asterisk-cc-phase1/webui && "
         f'python -c {repr(REMOTE_PY)} {MSISDN}'
     )
     _, o, e = c.exec_command(cmd, timeout=90)

@@ -7,14 +7,7 @@ HOST="$(hostname -s 2>/dev/null || hostname)"
 
 echo "========== load-test-snapshot $TS $HOST =========="
 
-if command -v docker >/dev/null 2>&1 && [[ -f docker-compose.yml ]]; then
-  if docker compose ps asterisk-a 2>/dev/null | grep -q Up; then
-    echo "--- asterisk (docker) ---"
-    docker compose exec -T asterisk-a asterisk -rx "core show channels count" 2>/dev/null || true
-    docker compose exec -T asterisk-a asterisk -rx "core show uptime" 2>/dev/null || true
-    docker compose exec -T asterisk-a asterisk -rx "queue show" 2>/dev/null | head -25 || true
-  fi
-elif command -v asterisk >/dev/null 2>&1; then
+if command -v asterisk >/dev/null 2>&1; then
   echo "--- asterisk (native) ---"
   asterisk -rx "core show channels count" 2>/dev/null || true
   asterisk -rx "core show uptime" 2>/dev/null || true
