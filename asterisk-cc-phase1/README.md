@@ -18,6 +18,13 @@ PBX/ACD, IVR, запись разговоров, CTI (AMI/ARI/AGI), суперв
 - `ops/` — установка, runbook, GSM ([gsm-ip-reference.md](ops/gsm-ip-reference.md)), нагрузка до 300 concurrent ([load-test-300.md](ops/load-test-300.md)), WebRTC FW.
 - Диагностика звука «туда и обратно» (оба плеча RTP): **[ops/audio-two-way-runbook.md](ops/audio-two-way-runbook.md)**.
 
+## Docker больше не используется
+
+Ранняя Phase 1 разворачивалась через Docker Compose; проект **полностью перенесён на native
+Ubuntu-установку под systemd** (`scripts/install-native-ubuntu.sh`, `ops/systemd/native/`).
+`docker-compose.yml` и `ops/deploy-docker-ubuntu.md` удалены — не поднимайте стенд по старым
+docker-инструкциям, если найдёте их в истории git.
+
 ## Быстрый старт (lab, native Ubuntu)
 
 1. Скопировать `.env.example` в `.env` и заполнить значения (заменить `changeme`).
