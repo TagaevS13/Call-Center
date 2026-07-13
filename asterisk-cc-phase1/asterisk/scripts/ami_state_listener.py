@@ -14,7 +14,7 @@ import socket
 import sys
 from typing import Optional
 
-import psycopg2 as psycopg
+import psycopg
 
 AMI_HOST = os.environ.get("AMI_HOST", "127.0.0.1")
 AMI_PORT = int(os.environ.get("AMI_PORT", "5038"))
@@ -133,7 +133,7 @@ async def main():
                                    "Secret": AMI_PASS,
                                    "Events": "system,call,agent,user"}))
             await writer.drain()
-            with psycopg.connect(DSN) as conn:
+            with psycopg.connect(DSN, autocommit=False) as conn:
                 while True:
                     ev = await parse_event(reader)
                     if ev is None:
